@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        :root {
+            --hd-height: 2.5rem;
+        }
+
+        button {
+            border: none;
+            background: transparent;
+        }
+
+        /* --- .ham 區塊 --- */
+        .ham {
+            /* rem-calc(-20) -> -20 / 16 */
+            margin-right: -1.25rem;
+            /* rem-calc(10) -> 10 / 16 */
+            margin-left: 0.625rem;
+            padding: 0.625rem;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        /* @include media-breakpoint-up(md) */
+        @media (min-width: 768px) {
+            .ham {
+                /* rem-calc(-18) -> -18 / 16 */
+                margin-right: -1.125rem;
+            }
+        }
+
+        /* @include media-breakpoint-hover */
+        @media (hover: hover) {
+            .ham {
+                transition: 0.3s;
+                /* $transition-time-normal */
+            }
+
+            .ham:hover,
+            .ham:focus {
+                /* rgba($primary-color, 5%) 假設主色為藍色 */
+                background-color: rgba(13, 110, 253, 0.05);
+                transition-duration: 0.15s;
+                /* $transition-time-hover */
+            }
+        }
+
+        /* --- .svg 區塊 --- */
+        .svg {
+            pointer-events: none;
+        }
+
+        /* @include media-breakpoint-down(md) */
+        @media (max-width: 767.98px) {
+            .svg {
+                /* 28 / 40 = 0.7 */
+                transform: scale(0.7);
+            }
+        }
+
+        /* --- .g 與路徑動畫區塊 --- */
+        .g {
+            transition: transform 0.3s;
+            /* $transition-time-normal */
+        }
+
+        /* 這裡是 @extend %path 的展開結果 */
+        .top,
+        .center,
+        .bottom {
+            transition: stroke-dashoffset 0.3s;
+            /* $transition-time-normal */
+        }
+
+        .top {
+            stroke-dasharray: 30px 80px;
+            stroke-dashoffset: 120px;
+        }
+
+        .center {
+            stroke-dasharray: 24px 80px;
+            stroke-dashoffset: 104px;
+        }
+
+        .bottom {
+            stroke-dasharray: 30px 80px;
+            stroke-dashoffset: 128px;
+        }
+
+        /* --- .active 狀態區塊 --- */
+        .is-menu-open .g {
+            transform: translateX(-40px);
+        }
+
+        .is-menu-open .top {
+            stroke-dashoffset: 65px;
+        }
+
+        .is-menu-open .center {
+            stroke-dashoffset: 50px;
+        }
+
+        .is-menu-open .bottom {
+            stroke-dashoffset: 73px;
+        }
+
+        .visually-hidden,
+        .show-for-sr {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0
+        }
+
+        /* SASS version
+        // 漢堡選單
+        .ham {
+            $root: &;
+
+            margin-right: rem-calc(-20);
+            margin-left: rem-calc(10);
+            padding: rem-calc(10);
+            border-radius: 50%;
+
+            @include media-breakpoint-up(md) {
+                margin-right: rem-calc(-18);
+            }
+
+            @include media-breakpoint-hover {
+                transition: $transition-time-normal;
+
+                &:hover,
+                &:focus {
+                    background-color: rgba($primary-color, 5%);
+                    transition-duration: $transition-time-hover;
+                }
+            }
+        }
+
+        .svg {
+            pointer-events: none;
+
+            @include media-breakpoint-down(md) {
+                transform: scale(#{(28 / 40)});
+            }
+        }
+
+        .g {
+            transition: transform $transition-time-normal;
+        }
+
+        @at-root %path {
+            transition: stroke-dashoffset $transition-time-normal;
+        }
+
+        .top {
+            @extend %path;
+
+            stroke-dasharray: 30px 80px;
+            stroke-dashoffset: 120px;
+        }
+
+        .center {
+            @extend %path;
+
+            stroke-dasharray: 24px 80px;
+            stroke-dashoffset: 104px;
+        }
+
+        .bottom {
+            @extend %path;
+
+            stroke-dasharray: 30px 80px;
+            stroke-dashoffset: 128px;
+        }
+
+        .active {
+            .g {
+                transform: translateX(-40px);
+            }
+
+            .top {
+                stroke-dashoffset: 65px;
+            }
+
+            .center {
+                stroke-dashoffset: 50px;
+            }
+
+            .bottom {
+                stroke-dashoffset: 73px;
+            }
+        }
+        */
+    </style>
+</head>
+
+<body>
+    <p>202208_ne</p>
+
+    <button type="button" aria-label="Menu" class="ham" id="hd-ham">
+        <svg class="svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40">
+            <g class="g" fill="none" stroke="#0c0c0d" stroke-width="2">
+                <path class="top"
+                    d="M12 11.86h20s2.62-.15 4 1.39c1.59 1.78 6.7 12.56 8.27 14.68s3.73.42 3.73.42l23.13-16.7"></path>
+                <path class="center" d="M8 20h51.57"></path>
+                <path class="bottom"
+                    d="M20 28.14h12s2.62 0 3.69-1.56C37 24.73 41.3 13.33 44 11.65a4.23 4.23 0 0 1 4 0l23.13 16.7">
+                </path>
+            </g>
+        </svg>
+    </button>
+
+    <script>
+        /* ------------------------------- [START] Hamburder Menu */
+        function initHamburgerMenu() {
+            const hamburgerMenuClassIsActive = 'is-menu-open';
+            const hamburgerMenu = document.querySelector('#hd-ham');
+
+            hamburgerMenu.addEventListener('click', () => {
+                hamburgerMenu.classList.toggle(hamburgerMenuClassIsActive);
+                document.body.classList.toggle(hamburgerMenuClassIsActive);
+            });
+        }
+        window.addEventListener('load', initHamburgerMenu);
+        /* ------------------------------- [END] Hamburder Menu */
+
+    </script>
+</body>
+
+</html>
