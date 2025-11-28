@@ -1,5 +1,7 @@
 import Preview from './Preview';
+import SegmentedControl from './ui/SegmentedControl';
 import type { Mode, Method, GeneratedCode } from '../types';
+import styles from './ControlsSidebar.module.scss';
 
 interface ControlsSidebarProps {
   mode: Mode;
@@ -15,26 +17,20 @@ export default function ControlsSidebar({
   generatedCode,
 }: ControlsSidebarProps) {
   return (
-    <aside className="controls-sidebar">
-      <div className="control-group">
+    <aside className={styles.controlsSidebar}>
+      <div className={styles.controlGroup}>
         <h2>Edit State</h2>
-        <div className="btn-group">
-          <button
-            className={`btn-toggle ${mode === 'menu' ? 'active' : ''}`}
-            onClick={() => onModeChange('menu')}
-          >
-            Menu (Hamburger)
-          </button>
-          <button
-            className={`btn-toggle ${mode === 'close' ? 'active' : ''}`}
-            onClick={() => onModeChange('close')}
-          >
-            Close (Active)
-          </button>
-        </div>
+        <SegmentedControl
+          options={[
+            { value: 'menu', label: 'Menu (Hamburger)' },
+            { value: 'close', label: 'Close (Active)' },
+          ]}
+          value={mode}
+          onChange={onModeChange}
+        />
       </div>
 
-      <div className="control-group">
+      <div className={styles.controlGroup}>
         <h2>Live Preview</h2>
         <Preview html={generatedCode.html} css={generatedCode.css} method={method} />
         <div style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>

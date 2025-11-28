@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import EditorCanvas from './components/EditorCanvas';
-import ControlsSidebar from './components/ControlsSidebar';
-import CodePanel from './components/CodePanel';
-import { generateCode } from './utils/generator';
+import EditorCanvas from '@/components/EditorCanvas';
+import ControlsSidebar from '@/components/ControlsSidebar';
+import CodePanel from '@/components/CodePanel';
+import SegmentedControl from '@/components/ui/SegmentedControl';
+import { generateCode } from '@/utils/generator';
 import type { Mode, Method, LineState, Lines } from './types';
-import './style.scss';
+import '@/styles/global.scss';
 
 // Initial State (Standard Hamburger -> Cross)
 const INITIAL_LINES: Lines = [
@@ -72,20 +73,14 @@ function App() {
           </div>
         </div>
 
-        <div className="panel-toggle">
-          <button
-            className={`panel-toggle-btn ${activePanel === 'design' ? 'active' : ''}`}
-            onClick={() => setActivePanel('design')}
-          >
-            Design
-          </button>
-          <button
-            className={`panel-toggle-btn ${activePanel === 'code' ? 'active' : ''}`}
-            onClick={() => setActivePanel('code')}
-          >
-            Code
-          </button>
-        </div>
+        <SegmentedControl
+          options={[
+            { value: 'design', label: 'Design' },
+            { value: 'code', label: 'Code' },
+          ]}
+          value={activePanel}
+          onChange={setActivePanel}
+        />
       </header>
 
       <main>
@@ -99,11 +94,7 @@ function App() {
             generatedCode={generatedCode}
           />
         ) : (
-          <CodePanel
-            generatedCode={generatedCode}
-            method={method}
-            onMethodChange={setMethod}
-          />
+          <CodePanel generatedCode={generatedCode} method={method} onMethodChange={setMethod} />
         )}
       </main>
     </>

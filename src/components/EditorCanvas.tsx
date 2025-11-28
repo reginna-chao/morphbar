@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import Button from './ui/Button';
 import type { Mode, LineState, DraggedPoint } from '../types';
+import styles from './EditorCanvas.module.scss';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -42,7 +44,7 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
         'd',
         `M ${ghostPoints[0].x} ${ghostPoints[0].y} L ${ghostPoints[1].x} ${ghostPoints[1].y}`
       );
-      ghostPath.classList.add('ghost-path');
+      ghostPath.classList.add(styles.ghostPath);
       ghostLayer.appendChild(ghostPath);
 
       // Draw Active Path
@@ -51,7 +53,7 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
         'd',
         `M ${activePoints[0].x} ${activePoints[0].y} L ${activePoints[1].x} ${activePoints[1].y}`
       );
-      activePath.classList.add('editor-path');
+      activePath.classList.add(styles.editorPath);
       activeLayer.appendChild(activePath);
 
       // Draw Controls for Active Path
@@ -60,7 +62,7 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
         circle.setAttribute('cx', point.x.toString());
         circle.setAttribute('cy', point.y.toString());
         circle.setAttribute('r', '6');
-        circle.classList.add('control-point');
+        circle.classList.add(styles.controlPoint);
         circle.dataset.lineIndex = index.toString();
         circle.dataset.pointIndex = pointIndex.toString();
         controlsLayer.appendChild(circle);
@@ -82,7 +84,7 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
 
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
     const target = e.target as Element;
-    if (target.classList.contains('control-point')) {
+    if (target.classList.contains(styles.controlPoint)) {
       const lineIndex = parseInt(target.getAttribute('data-line-index') || '0');
       const pointIndex = parseInt(target.getAttribute('data-point-index') || '0');
       const currentPoint = lines[lineIndex][mode][pointIndex];
@@ -145,8 +147,8 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
   }, [draggedPoint, handleMouseMove, handleMouseUp]);
 
   return (
-    <div className="editor-area">
-      <svg ref={svgRef} id="editor-svg" viewBox="0 0 100 100" onMouseDown={handleMouseDown}>
+    <div className={styles.editorArea}>
+      <svg ref={svgRef} className={styles.editorSvg} viewBox="0 0 100 100" onMouseDown={handleMouseDown}>
         {/* Grid lines for reference */}
         <defs>
           <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
@@ -170,9 +172,9 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
         <g ref={controlsLayerRef} id="controls-layer"></g>
       </svg>
 
-      <button className="btn-reset" onClick={onReset}>
+      <Button className={styles.btnReset} onClick={onReset}>
         Reset
-      </button>
+      </Button>
     </div>
   );
 }

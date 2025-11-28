@@ -1,0 +1,103 @@
+// SASS Variables
+$bg-color: #121314;
+$surface-color: #1e1f20;
+$primary-color: #3f77e9;
+$primary-light-color: #00aef6;
+$text-color: #ffffff;
+$text-secondary: #a0a0a0;
+$border-color: #333;
+$input-bg: #2a2b2c;
+$success-color: #2ecc71;
+
+// Colors for editor paths
+$color-red: #ff6b6b;
+$color-cyan: #4ecdc4;
+$color-yellow: #ffe66d;
+
+$white: #fff;
+$black: #000;
+
+// Mixins
+@mixin flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+@mixin button-base {
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+// CSS Variables
+:root {
+  --bg-color: #{$bg-color};
+  --surface-color: #{$surface-color};
+  --primary-color: #{$primary-color};
+  --text-color: #{$text-color};
+  --text-secondary: #{$text-secondary};
+  --border-color: #{$border-color};
+  --input-bg: #{$input-bg};
+  --success-color: #{$success-color};
+  --color-red: #{$color-red};
+  --color-cyan: #{$color-cyan};
+  --color-yellow: #{$color-yellow};
+}
+
+// Global styles
+body {
+  margin: 0;
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+// Header
+header {
+  padding: 1rem 2rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--surface-color);
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  background: linear-gradient(45deg, $primary-color, $primary-light-color);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+h2 {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+  margin: 0 0 0.5rem 0;
+}
+
+// Layout
+main {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  flex: 1;
+  height: calc(100vh - 60px);
+}

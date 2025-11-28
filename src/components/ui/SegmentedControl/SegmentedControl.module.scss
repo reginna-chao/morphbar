@@ -1,0 +1,29 @@
+.segmentedControl {
+  display: flex;
+  background: var(--input-bg);
+  border-radius: 8px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.button {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  @include button-base;
+
+  &.active {
+    background-color: var(--primary-color);
+    color: $white;
+    box-shadow: 0 2px 4px rgba($black, 0.2);
+  }
+
+  &:hover:not(.active) {
+    background-color: rgba($white, 0.05);
+  }
+}

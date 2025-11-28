@@ -1,5 +1,8 @@
 import { useRef } from 'react';
+import Button from './ui/Button';
+import SegmentedControl from './ui/SegmentedControl';
 import type { GeneratedCode, Method } from '../types';
+import styles from './CodePanel.module.scss';
 
 interface CodePanelProps {
   generatedCode: GeneratedCode;
@@ -27,34 +30,28 @@ export default function CodePanel({ generatedCode, method, onMethodChange }: Cod
   };
 
   return (
-    <div className="code-panel">
-      <div className="code-panel-header">
+    <div className={styles.codePanel}>
+      <div className={styles.codePanelHeader}>
         <h2>Generated Code</h2>
-        <button className="btn-copy" id="btn-copy" onClick={handleCopy}>
+        <Button variant="primary" id="btn-copy" onClick={handleCopy}>
           Copy Code
-        </button>
+        </Button>
       </div>
 
-      <div className="code-panel-content">
-        <div className="control-group">
+      <div className={styles.codePanelContent}>
+        <div className={styles.controlGroup}>
           <h2>Implementation Method</h2>
-          <div className="btn-group">
-            <button
-              className={`btn-toggle ${method === 'checkbox' ? 'active' : ''}`}
-              onClick={() => onMethodChange('checkbox')}
-            >
-              Checkbox (CSS)
-            </button>
-            <button
-              className={`btn-toggle ${method === 'class' ? 'active' : ''}`}
-              onClick={() => onMethodChange('class')}
-            >
-              Class + JS
-            </button>
-          </div>
+          <SegmentedControl
+            options={[
+              { value: 'checkbox', label: 'Checkbox (CSS)' },
+              { value: 'class', label: 'Class + JS' },
+            ]}
+            value={method}
+            onChange={onMethodChange}
+          />
         </div>
 
-        <div className="code-output">
+        <div className={styles.codeOutput}>
           <code ref={codeDisplayRef} id="code-display">
             {generatedCode.fullCode}
           </code>

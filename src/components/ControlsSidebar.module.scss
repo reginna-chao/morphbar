@@ -1,0 +1,15 @@
+.controlsSidebar {
+  background-color: var(--surface-color);
+  border-left: 1px solid var(--border-color);
+  padding: 2rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.controlGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
