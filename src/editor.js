@@ -84,10 +84,16 @@ export class Editor {
         // Mouse Down (Start Drag)
         this.svg.addEventListener('mousedown', (e) => {
             if (e.target.classList.contains('control-point')) {
+                const lineIndex = parseInt(e.target.dataset.lineIndex);
+                const pointIndex = parseInt(e.target.dataset.pointIndex);
+                const currentPoint = this.lines[lineIndex][this.mode][pointIndex];
+
                 this.draggedPoint = {
-                    lineIndex: parseInt(e.target.dataset.lineIndex),
-                    pointIndex: parseInt(e.target.dataset.pointIndex),
-                    el: e.target
+                    lineIndex,
+                    pointIndex,
+                    el: e.target,
+                    originX: currentPoint.x,
+                    originY: currentPoint.y
                 };
             }
         });
@@ -97,12 +103,27 @@ export class Editor {
             if (!this.draggedPoint) return;
 
             const pt = this.getSVGPoint(e);
-            // Snap to grid (optional, let's do 1px snap for now or 5px)
-            // pt.x = Math.round(pt.x / 5) * 5;
-            // pt.y = Math.round(pt.y / 5) * 5;
+            let x = pt.x;
+            let y = pt.y;
+
+            // Shift Key: Axis Lock
+            if (e.shiftKey) {
+                const dx = Math.abs(x - this.draggedPoint.originX);
+                const dy = Math.abs(y - this.draggedPoint.originY);
+
+                if (dx > dy) {
+                    y = this.draggedPoint.originY; // Lock Y (Horizontal movement)
+                } else {
+                    x = this.draggedPoint.originX; // Lock X (Vertical movement)
+                }
+            }
+
+            // Grid Snap (5px)
+            x = Math.round(x / 5) * 5;
+            y = Math.round(y / 5) * 5;
 
             // Update State
-            this.lines[this.draggedPoint.lineIndex][this.mode][this.draggedPoint.pointIndex] = { x: pt.x, y: pt.y };
+            this.lines[this.draggedPoint.lineIndex][this.mode][this.draggedPoint.pointIndex] = { x, y };
 
             // Update UI
             this.render();
