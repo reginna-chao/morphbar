@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import EditorCanvas from './components/EditorCanvas';
 import ControlsSidebar from './components/ControlsSidebar';
+import CodePanel from './components/CodePanel';
 import { generateCode } from './utils/generator';
 import type { Mode, Method, LineState, Lines } from './types';
 import './style.scss';
@@ -39,10 +40,13 @@ const INITIAL_LINES: Lines = [
   },
 ];
 
+type PanelType = 'design' | 'code';
+
 function App() {
   const [mode, setMode] = useState<Mode>('menu');
   const [method, setMethod] = useState<Method>('checkbox');
   const [lines, setLines] = useState<LineState[]>(JSON.parse(JSON.stringify(INITIAL_LINES)));
+  const [activePanel, setActivePanel] = useState<PanelType>('design');
 
   const handleReset = () => {
     setLines(JSON.parse(JSON.stringify(INITIAL_LINES)));
@@ -53,30 +57,54 @@ function App() {
   return (
     <>
       <header>
-        <h1>Hamburger Menu Generator</h1>
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-          Inspired by{' '}
-          <a
-            href="https://codepen.io/Zaku/pen/ejLNJL"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: 'inherit' }}
+        <div className="header-left">
+          <h1>Hamburger Menu Generator</h1>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+            Inspired by{' '}
+            <a
+              href="https://codepen.io/Zaku/pen/ejLNJL"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'inherit' }}
+            >
+              Zaku's Pen
+            </a>
+          </div>
+        </div>
+
+        <div className="panel-toggle">
+          <button
+            className={`panel-toggle-btn ${activePanel === 'design' ? 'active' : ''}`}
+            onClick={() => setActivePanel('design')}
           >
-            Zaku's Pen
-          </a>
+            Design
+          </button>
+          <button
+            className={`panel-toggle-btn ${activePanel === 'code' ? 'active' : ''}`}
+            onClick={() => setActivePanel('code')}
+          >
+            Code
+          </button>
         </div>
       </header>
 
       <main>
         <EditorCanvas mode={mode} lines={lines} onLinesChange={setLines} onReset={handleReset} />
 
-        <ControlsSidebar
-          mode={mode}
-          onModeChange={setMode}
-          method={method}
-          onMethodChange={setMethod}
-          generatedCode={generatedCode}
-        />
+        {activePanel === 'design' ? (
+          <ControlsSidebar
+            mode={mode}
+            onModeChange={setMode}
+            method={method}
+            generatedCode={generatedCode}
+          />
+        ) : (
+          <CodePanel
+            generatedCode={generatedCode}
+            method={method}
+            onMethodChange={setMethod}
+          />
+        )}
       </main>
     </>
   );
