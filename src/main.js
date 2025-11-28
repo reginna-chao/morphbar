@@ -7,7 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const codeDisplay = document.getElementById('code-display');
   const btnCopy = document.getElementById('btn-copy');
   const btnReset = document.getElementById('btn-reset');
-  const modeButtons = document.querySelectorAll('.btn-toggle');
+  const modeButtons = document.querySelectorAll('[data-mode]');
+  const methodButtons = document.querySelectorAll('[data-method]');
 
   const editor = new Editor(svgElement, previewContainer, codeDisplay);
 
@@ -17,6 +18,15 @@ document.addEventListener('DOMContentLoaded', () => {
       modeButtons.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       editor.setMode(btn.dataset.mode);
+    });
+  });
+
+  // Method Switching
+  methodButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      methodButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      editor.setMethod(btn.dataset.method);
     });
   });
 

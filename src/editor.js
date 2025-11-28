@@ -12,6 +12,7 @@ export class Editor {
         this.controlsLayer = this.svg.querySelector('#controls-layer');
 
         this.mode = 'menu'; // 'menu' or 'close'
+        this.generationMethod = 'checkbox'; // 'checkbox' or 'class'
 
         // Initial State (Standard Hamburger -> Cross)
         this.initialLines = [
@@ -153,8 +154,13 @@ export class Editor {
         return pt.matrixTransform(this.svg.getScreenCTM().inverse());
     }
 
+    setMethod(method) {
+        this.generationMethod = method;
+        this.updateOutput();
+    }
+
     updateOutput() {
-        const { html, css } = generateCode(this.lines);
+        const { html, css, js } = generateCode(this.lines, this.generationMethod);
 
         // Update Preview
         this.previewContainer.innerHTML = html;
@@ -162,7 +168,21 @@ export class Editor {
         styleEl.textContent = css;
         this.previewContainer.appendChild(styleEl);
 
+        // For preview interaction in Class mode, we need to add the event listener
+        if (this.generationMethod === 'class') {
+            const menu = this.previewContainer.querySelector('.hamburger-menu');
+            if (menu) {
+                menu.addEventListener('click', () => {
+                    menu.classList.toggle('is-active');
+                });
+            }
+        }
+
         // Update Code Display
-        this.codeDisplay.textContent = `<style>\n${css}\n</style>\n\n${html}`;
+        let code = `<style>\n${css}\n</style>\n\n${html}`;
+        if (js) {
+            code += `\n\n<script>\n${js}\n</script>`;
+        }
+        this.codeDisplay.textContent = code;
     }
 }

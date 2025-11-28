@@ -1,4 +1,4 @@
-export function generateCode(lines) {
+export function generateCode(lines, method = 'checkbox') {
   // lines is an array of 3 objects: { menu: [start, end], close: [start, end] }
   // We need to construct a single path for each line that connects menu -> close
 
@@ -51,30 +51,38 @@ export function generateCode(lines) {
   });
 
   return {
-    html: generateHTML(paths),
-    css: generateCSS(paths)
+    html: generateHTML(paths, method),
+    css: generateCSS(paths, method),
+    js: generateJS(method)
   };
 }
 
-function generateHTML(paths) {
-  return `<label class="hamburger-menu">
+function generateHTML(paths, method) {
+  if (method === 'checkbox') {
+    return `<label class="hamburger-menu">
   <input type="checkbox">
   <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
 ${paths.map((p, i) => `    <path class="line--${i + 1}" d="${p.d}" />`).join('\n')}
   </svg>
 </label>`;
+  } else {
+    return `<button class="hamburger-menu">
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+${paths.map((p, i) => `    <path class="line--${i + 1}" d="${p.d}" />`).join('\n')}
+  </svg>
+</button>`;
+  }
 }
 
-function generateCSS(paths) {
-  return `.hamburger-menu {
+function generateCSS(paths, method) {
+  const baseCSS = `.hamburger-menu {
   cursor: pointer;
   display: block;
   width: 50px;
   height: 50px;
-}
-
-.hamburger-menu input {
-  display: none;
+  background: transparent;
+  border: none;
+  padding: 0;
 }
 
 .hamburger-menu svg {
@@ -95,9 +103,15 @@ ${paths.map((p, i) => `/* Line ${i + 1} */
 .line--${i + 1} {
   stroke-dasharray: ${p.menuLength.toFixed(2)} ${p.totalLength.toFixed(2)};
   stroke-dashoffset: ${p.offsetMenu};
-}`).join('\n')}
+}`).join('\n')}`;
 
-.hamburger-menu input:checked + svg {
+  const activeSelector = method === 'checkbox' ? '.hamburger-menu input:checked + svg' : '.hamburger-menu.is-active svg';
+  const checkboxCSS = method === 'checkbox' ? `\n.hamburger-menu input {
+  display: none;
+}\n` : '';
+
+  const activeCSS = `
+${activeSelector} {
 ${paths.map((p, i) => {
     // If the close line has zero length, hide it completely
     const dashArray = p.closeLength < 0.1 ? '0 9999' : `${p.closeLength.toFixed(2)} ${p.totalLength.toFixed(2)}`;
@@ -107,4 +121,17 @@ ${paths.map((p, i) => {
   }`;
   }).join('\n')}
 }`;
+
+  return baseCSS + checkboxCSS + activeCSS;
+}
+
+function generateJS(method) {
+  if (method === 'class') {
+    return `const menu = document.querySelector('.hamburger-menu');
+
+menu.addEventListener('click', () => {
+  menu.classList.toggle('is-active');
+});`;
+  }
+  return '';
 }

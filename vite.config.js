@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite'
 
-export default defineConfig({
-  base: '/fashion-hamburger-menu-generator/',
-})
+export default defineConfig(({ command }) => ({
+    base: command === 'serve' ? '/' : '/fashion-hamburger-menu-generator/',
+}))
