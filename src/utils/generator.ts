@@ -1,13 +1,17 @@
-import type { LineState, Method, PathData, GeneratedCode } from '../types';
+import type { LineState, Method, PathData, GeneratedCode, ClassNameConfig } from '../types';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-export function generateCode(lines: LineState[], method: Method = 'checkbox'): GeneratedCode {
+export function generateCode(
+  lines: LineState[],
+  method: Method = 'checkbox',
+  classNameConfig: ClassNameConfig = { baseClass: 'hamburger-menu', activeClass: 'is-active' }
+): GeneratedCode {
   const paths = lines.map((line) => calculatePathData(line));
 
-  const html = generateHTML(paths, method);
-  const css = generateCSS(paths, method);
-  const js = generateJS(method);
+  const html = generateHTML(paths, method, classNameConfig.baseClass);
+  const css = generateCSS(paths, method, classNameConfig);
+  const js = generateJS(method, classNameConfig);
 
   let fullCode = `<style>\n${css}\n</style>\n\n${html}`;
   if (js) {
@@ -61,20 +65,20 @@ function calculatePathData(line: LineState): PathData {
   };
 }
 
-function generateHTML(paths: PathData[], method: Method): string {
+function generateHTML(paths: PathData[], method: Method, baseClass: string): string {
   const pathsHTML = paths
     .map((p, i) => `    <path class="line--${i + 1}" d="${p.d}" />`)
     .join('\n');
 
   if (method === 'checkbox') {
-    return `<label class="hamburger-menu">
+    return `<label class="${baseClass}">
   <input type="checkbox">
   <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
 ${pathsHTML}
   </svg>
 </label>`;
   } else {
-    return `<button class="hamburger-menu">
+    return `<button class="${baseClass}">
   <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
 ${pathsHTML}
   </svg>
@@ -82,8 +86,10 @@ ${pathsHTML}
   }
 }
 
-function generateCSS(paths: PathData[], method: Method): string {
-  const baseCSS = `.hamburger-menu {
+function generateCSS(paths: PathData[], method: Method, classNameConfig: ClassNameConfig): string {
+  const { baseClass, activeClass } = classNameConfig;
+
+  const baseCSS = `.${baseClass} {
   cursor: pointer;
   display: block;
   width: 50px;
@@ -93,12 +99,12 @@ function generateCSS(paths: PathData[], method: Method): string {
   padding: 0;
 }
 
-.hamburger-menu svg {
+.${baseClass} svg {
   width: 100%;
   height: 100%;
 }
 
-.hamburger-menu path {
+.${baseClass} path {
   fill: none;
   stroke: #ffffff;
   stroke-width: 3;
@@ -118,11 +124,13 @@ ${paths
   .join('\n')}`;
 
   const activeSelector =
-    method === 'checkbox' ? '.hamburger-menu input:checked + svg' : '.hamburger-menu.is-active svg';
+    method === 'checkbox'
+      ? `.${baseClass} input:checked + svg`
+      : `.${baseClass}.${activeClass} svg`;
 
   const checkboxCSS =
     method === 'checkbox'
-      ? `\n.hamburger-menu input {
+      ? `\n.${baseClass} input {
   display: none;
 }\n`
       : '';
@@ -144,12 +152,14 @@ ${paths
   return baseCSS + checkboxCSS + activeCSS;
 }
 
-function generateJS(method: Method): string {
+function generateJS(method: Method, classNameConfig: ClassNameConfig): string {
+  const { baseClass, activeClass } = classNameConfig;
+
   if (method === 'class') {
-    return `const menu = document.querySelector('.hamburger-menu');
+    return `const menu = document.querySelector('.${baseClass}');
 
 menu.addEventListener('click', () => {
-  menu.classList.toggle('is-active');
+  menu.classList.toggle('${activeClass}');
 });`;
   }
   return '';

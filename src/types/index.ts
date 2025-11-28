@@ -30,6 +30,11 @@ export interface GeneratedCode {
   fullCode: string;
 }
 
+export interface ClassNameConfig {
+  baseClass: string;
+  activeClass: string;
+}
+
 export interface DraggedPoint {
   lineIndex: number;
   pointIndex: number;

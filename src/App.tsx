@@ -4,7 +4,7 @@ import ControlsSidebar from '@/components/ControlsSidebar';
 import CodePanel from '@/components/CodePanel';
 import SegmentedControl from '@/components/ui/SegmentedControl';
 import { generateCode } from '@/utils/generator';
-import type { Mode, Method, LineState, Lines } from './types';
+import type { Mode, Method, LineState, Lines, ClassNameConfig } from './types';
 import '@/styles/global.scss';
 
 // Initial State (Standard Hamburger -> Cross)
@@ -48,12 +48,16 @@ function App() {
   const [method, setMethod] = useState<Method>('checkbox');
   const [lines, setLines] = useState<LineState[]>(JSON.parse(JSON.stringify(INITIAL_LINES)));
   const [activePanel, setActivePanel] = useState<PanelType>('design');
+  const [classNameConfig, setClassNameConfig] = useState<ClassNameConfig>({
+    baseClass: 'hamburger-menu',
+    activeClass: 'is-active',
+  });
 
   const handleReset = () => {
     setLines(JSON.parse(JSON.stringify(INITIAL_LINES)));
   };
 
-  const generatedCode = generateCode(lines, method);
+  const generatedCode = generateCode(lines, method, classNameConfig);
 
   return (
     <>
@@ -94,7 +98,13 @@ function App() {
             generatedCode={generatedCode}
           />
         ) : (
-          <CodePanel generatedCode={generatedCode} method={method} onMethodChange={setMethod} />
+          <CodePanel
+            generatedCode={generatedCode}
+            method={method}
+            onMethodChange={setMethod}
+            classNameConfig={classNameConfig}
+            onClassNameChange={setClassNameConfig}
+          />
         )}
       </main>
     </>
