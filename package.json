@@ -1,7 +1,9 @@
 {
-  "name": "hamburger-menu-generator",
-  "private": true,
-  "version": "0.0.0",
+  "name": "fashion-hamburger-menu-generator",
+  "description": "Fashion Hamburger Menu Generator",
+  "version": "1.0.0",
+  "author": "Reginna Chao",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
