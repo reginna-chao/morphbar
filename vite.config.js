@@ -4,7 +4,7 @@ import path from 'path';
 
 export default defineConfig(({ command }) => ({
   plugins: [react()],
-  base: command === 'serve' ? '/' : '/fashion-hamburger-menu-generator/',
+  base: command === 'serve' ? '/' : '/morphbar/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

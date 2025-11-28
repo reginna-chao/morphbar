@@ -1,4 +1,8 @@
-# Fashion Hamburger Menu Generator
+# MorphBar
+
+Dynamic morphing menu icon generator — create animated hamburger-to-close icons with draggable points.
+
+[Live Demo](https://reginna-chao.github.io/morphbar/)
 
 A visual tool to design and generate animated hamburger menu icons. This project allows you to interactively edit SVG paths, preview animations, and generate the necessary HTML, CSS, and JavaScript code for your projects.
 
@@ -16,19 +20,6 @@ A visual tool to design and generate animated hamburger menu icons. This project
 - [Node.js](https://nodejs.org/) (version 14 or higher recommended)
 
 ### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   ```
-2. Navigate to the project directory:
-   ```bash
-   cd fashion-hamburger-menu-generator
-   ```
-3. Install dependencies:
-   ```bash
-   npm install
-   ```
 
 ### Running Development Server
 
