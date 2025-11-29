@@ -1,6 +1,24 @@
-import type { LineState, Method, PathData, GeneratedCode, ClassNameConfig } from '../types';
+import type { LineState, Method, PathData, GeneratedCode, ClassNameConfig, PathPoint } from '../types';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+
+// 生成 SVG 路徑字串，支援多點與 Bezier 曲線
+function generatePathString(points: PathPoint[]): string {
+  if (points.length < 2) return '';
+
+  const anchors = points.filter(p => p.type === 'anchor');
+  if (anchors.length < 2) return '';
+
+  // 簡化版：目前先將所有錨點連成直線
+  // 未來可以根據控制點生成 Bezier 曲線
+  const commands = [`M ${anchors[0].x} ${anchors[0].y}`];
+
+  for (let i = 1; i < anchors.length; i++) {
+    commands.push(`L ${anchors[i].x} ${anchors[i].y}`);
+  }
+
+  return commands.join(' ');
+}
 
 export function generateCode(
   lines: LineState[],
@@ -29,31 +47,51 @@ export function generateCode(
 function calculatePathData(line: LineState): PathData {
   const { menu, close } = line;
 
-  const dx = close[0].x - menu[1].x;
+  const menuAnchors = menu.filter(p => p.type === 'anchor');
+  const closeAnchors = close.filter(p => p.type === 'anchor');
 
-  const cp1 = { x: menu[1].x + dx * 0.5, y: menu[1].y };
-  const cp2 = { x: close[0].x - dx * 0.5, y: close[0].y };
+  if (menuAnchors.length < 2 || closeAnchors.length < 2) {
+    // 處理錯誤情況
+    return {
+      d: '',
+      totalLength: 0,
+      menuLength: 0,
+      closeLength: 0,
+      offsetMenu: 0,
+      offsetClose: 0,
+    };
+  }
 
-  const d = `M ${menu[0].x} ${menu[0].y} L ${menu[1].x} ${menu[1].y} C ${cp1.x} ${cp1.y} ${cp2.x} ${cp2.y} ${close[0].x} ${close[0].y} L ${close[1].x} ${close[1].y}`;
+  const menuLast = menuAnchors[menuAnchors.length - 1];
+  const closeFirst = closeAnchors[0];
 
+  // 計算連接兩個狀態的貝茲曲線控制點
+  const dx = closeFirst.x - menuLast.x;
+  const cp1 = { x: menuLast.x + dx * 0.5, y: menuLast.y };
+  const cp2 = { x: closeFirst.x - dx * 0.5, y: closeFirst.y };
+
+  // 生成完整路徑：menu 狀態 -> 過渡曲線 -> close 狀態
+  const menuPath = generatePathString(menu);
+  const closePath = generatePathString(close);
+
+  const d = `${menuPath} C ${cp1.x} ${cp1.y} ${cp2.x} ${cp2.y} ${closeFirst.x} ${closeFirst.y} ${closePath.substring(closePath.indexOf('L'))}`;
+
+  // 計算路徑長度
   const pathEl = document.createElementNS(SVG_NS, 'path');
   pathEl.setAttribute('d', d);
   const totalLength = pathEl.getTotalLength();
 
-  const p1 = document.createElementNS(SVG_NS, 'path');
-  p1.setAttribute('d', `M ${menu[0].x} ${menu[0].y} L ${menu[1].x} ${menu[1].y}`);
-  const menuLength = p1.getTotalLength();
+  const menuEl = document.createElementNS(SVG_NS, 'path');
+  menuEl.setAttribute('d', menuPath);
+  const menuLength = menuEl.getTotalLength();
 
-  const p2 = document.createElementNS(SVG_NS, 'path');
-  p2.setAttribute(
-    'd',
-    `M ${menu[1].x} ${menu[1].y} C ${cp1.x} ${cp1.y} ${cp2.x} ${cp2.y} ${close[0].x} ${close[0].y}`
-  );
-  const connectionLength = p2.getTotalLength();
+  const closeEl = document.createElementNS(SVG_NS, 'path');
+  closeEl.setAttribute('d', closePath);
+  const closeLength = closeEl.getTotalLength();
 
-  const p3 = document.createElementNS(SVG_NS, 'path');
-  p3.setAttribute('d', `M ${close[0].x} ${close[0].y} L ${close[1].x} ${close[1].y}`);
-  const closeLength = p3.getTotalLength();
+  const connectionEl = document.createElementNS(SVG_NS, 'path');
+  connectionEl.setAttribute('d', `M ${menuLast.x} ${menuLast.y} C ${cp1.x} ${cp1.y} ${cp2.x} ${cp2.y} ${closeFirst.x} ${closeFirst.y}`);
+  const connectionLength = connectionEl.getTotalLength();
 
   return {
     d,

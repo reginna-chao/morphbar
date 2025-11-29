@@ -1,4 +1,4 @@
-import { MousePointer, Plus, Minus } from 'lucide-react';
+import { MousePointer, GitBranchPlus, GitBranchMinus } from 'lucide-react';
 import type { Tool } from '../types';
 import styles from './Toolbar.module.scss';
 
@@ -10,8 +10,8 @@ interface ToolbarProps {
 export default function Toolbar({ activeTool, onToolChange }: ToolbarProps) {
   const tools: { id: Tool; icon: typeof MousePointer; label: string }[] = [
     { id: 'select', icon: MousePointer, label: 'Select (V)' },
-    { id: 'pen-add', icon: Plus, label: 'Add Point (A)' },
-    { id: 'pen-remove', icon: Minus, label: 'Remove Point (D)' },
+    { id: 'pen-add', icon: GitBranchPlus, label: 'Add Point (A)' },
+    { id: 'pen-remove', icon: GitBranchMinus, label: 'Remove Point (D)' },
   ];
 
   return (

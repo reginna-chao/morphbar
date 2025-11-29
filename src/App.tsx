@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import EditorCanvas from '@/components/EditorCanvas';
 import ControlsSidebar from '@/components/ControlsSidebar';
 import CodePanel from '@/components/CodePanel';
@@ -63,6 +65,18 @@ function App() {
 
   return (
     <>
+      <ToastContainer
+        position="top-center"
+        autoClose={2000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+      />
       <header>
         <div className="header-left">
           <h1 className="header-logo">
