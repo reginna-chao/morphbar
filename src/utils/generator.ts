@@ -4,6 +4,7 @@ import type {
   PathData,
   GeneratedCode,
   ClassNameConfig,
+  SizeConfig,
   PathPoint,
 } from '../types';
 
@@ -30,12 +31,13 @@ function generatePathString(points: PathPoint[]): string {
 export function generateCode(
   lines: LineState[],
   method: Method = 'checkbox',
-  classNameConfig: ClassNameConfig = { baseClass: 'hamburger-menu', activeClass: 'is-active' }
+  classNameConfig: ClassNameConfig = { baseClass: 'hamburger-menu', activeClass: 'is-active' },
+  sizeConfig: SizeConfig = { width: 50, strokeWidth: 3 }
 ): GeneratedCode {
   const paths = lines.map((line) => calculatePathData(line));
 
   const html = generateHTML(paths, method, classNameConfig.baseClass);
-  const css = generateCSS(paths, method, classNameConfig);
+  const css = generateCSS(paths, method, classNameConfig, sizeConfig);
   const js = generateJS(method, classNameConfig);
 
   let fullCode = `<style>\n${css}\n</style>\n\n${html}`;
@@ -134,14 +136,20 @@ ${pathsHTML}
   }
 }
 
-function generateCSS(paths: PathData[], method: Method, classNameConfig: ClassNameConfig): string {
+function generateCSS(
+  paths: PathData[],
+  method: Method,
+  classNameConfig: ClassNameConfig,
+  sizeConfig: SizeConfig
+): string {
   const { baseClass, activeClass } = classNameConfig;
+  const { width, strokeWidth } = sizeConfig;
 
   const baseCSS = `.${baseClass} {
   cursor: pointer;
   display: block;
-  width: 50px;
-  height: 50px;
+  width: ${width}px;
+  height: ${width}px;
   background: transparent;
   border: none;
   padding: 0;
@@ -155,7 +163,7 @@ function generateCSS(paths: PathData[], method: Method, classNameConfig: ClassNa
 .${baseClass} path {
   fill: none;
   stroke: #ffffff;
-  stroke-width: 3;
+  stroke-width: ${strokeWidth};
   stroke-linecap: round;
   stroke-linejoin: round;
   transition: all 0.8s cubic-bezier(.645, .045, .355, 1);

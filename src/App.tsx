@@ -7,7 +7,7 @@ import CodePanel from '@/components/CodePanel';
 import SegmentedControl from '@/components/ui/SegmentedControl';
 import ThemeToggle from '@/components/ThemeToggle';
 import { generateCode } from '@/utils/generator';
-import type { Mode, Method, LineState, Lines, ClassNameConfig } from './types';
+import type { Mode, Method, LineState, Lines, ClassNameConfig, SizeConfig } from './types';
 import '@/styles/global.scss';
 import logoLight from '@/assets/images/logomark-light.svg';
 import logoDark from '@/assets/images/logomark-dark.svg';
@@ -57,12 +57,16 @@ function App() {
     baseClass: 'hamburger-menu',
     activeClass: 'is-active',
   });
+  const [sizeConfig, setSizeConfig] = useState<SizeConfig>({
+    width: 50,
+    strokeWidth: 3,
+  });
 
   const handleReset = () => {
     setLines(JSON.parse(JSON.stringify(INITIAL_LINES)));
   };
 
-  const generatedCode = generateCode(lines, method, classNameConfig);
+  const generatedCode = generateCode(lines, method, classNameConfig, sizeConfig);
 
   return (
     <>
@@ -140,6 +144,8 @@ function App() {
             onMethodChange={setMethod}
             classNameConfig={classNameConfig}
             onClassNameChange={setClassNameConfig}
+            sizeConfig={sizeConfig}
+            onSizeConfigChange={setSizeConfig}
           />
         )}
       </main>

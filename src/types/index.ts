@@ -41,6 +41,11 @@ export interface ClassNameConfig {
   activeClass: string;
 }
 
+export interface SizeConfig {
+  width: number; // in pixels
+  strokeWidth: number; // SVG stroke width
+}
+
 export interface DraggedPoint {
   lineIndex: number;
   pointIndex: number;

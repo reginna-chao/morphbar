@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import Button from './ui/Button';
 import SegmentedControl from './ui/SegmentedControl';
-import type { GeneratedCode, Method, ClassNameConfig } from '../types';
+import type { GeneratedCode, Method, ClassNameConfig, SizeConfig } from '../types';
 import styles from './CodePanel.module.scss';
 
 interface CodePanelProps {
@@ -10,6 +10,8 @@ interface CodePanelProps {
   onMethodChange: (method: Method) => void;
   classNameConfig: ClassNameConfig;
   onClassNameChange: (config: ClassNameConfig) => void;
+  sizeConfig: SizeConfig;
+  onSizeConfigChange: (config: SizeConfig) => void;
 }
 
 export default function CodePanel({
@@ -18,6 +20,8 @@ export default function CodePanel({
   onMethodChange,
   classNameConfig,
   onClassNameChange,
+  sizeConfig,
+  onSizeConfigChange,
 }: CodePanelProps) {
   const codeDisplayRef = useRef<HTMLElement>(null);
 
@@ -88,6 +92,25 @@ export default function CodePanel({
               />
             </div>
           )}
+        </div>
+
+        <div className={styles.controlGroup}>
+          <h2>Size Settings</h2>
+          <div className={styles.inputGroup}>
+            <label htmlFor="width">Width (px)</label>
+            <input
+              id="width"
+              type="number"
+              min="20"
+              max="200"
+              value={sizeConfig.width}
+              onChange={(e) =>
+                onSizeConfigChange({ ...sizeConfig, width: parseInt(e.target.value) || 50 })
+              }
+              className={styles.input}
+              placeholder="50"
+            />
+          </div>
         </div>
 
         <div className={styles.codeOutput}>
