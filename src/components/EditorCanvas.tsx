@@ -7,7 +7,7 @@ import styles from './EditorCanvas.module.scss';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-// 計算點到線段的最短距離
+// Calculate shortest distance from point to line segment
 function pointToSegmentDistance(
   px: number,
   py: number,
@@ -21,19 +21,19 @@ function pointToSegmentDistance(
   const lengthSquared = dx * dx + dy * dy;
 
   if (lengthSquared === 0) {
-    // 線段退化為點
+    // Line segment degenerates to a point
     return Math.sqrt((px - x1) ** 2 + (py - y1) ** 2);
   }
 
-  // 計算投影參數 t
+  // Calculate projection parameter t
   let t = ((px - x1) * dx + (py - y1) * dy) / lengthSquared;
-  t = Math.max(0, Math.min(1, t)); // 限制在 [0, 1] 範圍
+  t = Math.max(0, Math.min(1, t)); // Clamp to [0, 1] range
 
-  // 計算投影點
+  // Calculate projection point
   const projX = x1 + t * dx;
   const projY = y1 + t * dy;
 
-  // 返回距離
+  // Return distance
   return Math.sqrt((px - projX) ** 2 + (py - projY) ** 2);
 }
 
@@ -85,7 +85,7 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
     controlsLayer.innerHTML = '';
     connectionLayer.innerHTML = '';
 
-    // 生成路徑字串（只連接錨點）
+    // Generate path string (connect anchor points only)
     const generatePathD = (points: PathPoint[]) => {
       const anchors = points.filter((p) => p.type === 'anchor');
       if (anchors.length < 2) return '';
@@ -120,7 +120,7 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
         activeLayer.appendChild(activePath);
       }
 
-      // Draw Controls for Active Path (只顯示錨點)
+      // Draw Controls for Active Path (anchor points only)
       activePoints.forEach((point, pointIndex) => {
         if (point.type === 'anchor') {
           const circle = document.createElementNS(SVG_NS, 'circle');
@@ -264,17 +264,17 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
     const target = e.target as Element;
 
-    // 點擊控制點時設置 focus
+    // Set focus when clicking control point
     if (target.classList.contains(styles.controlPoint)) {
       const lineIndex = parseInt(target.getAttribute('data-line-index') || '0');
       const pointIndex = parseInt(target.getAttribute('data-point-index') || '0');
       setFocusedPoint({ lineIndex, pointIndex });
     } else {
-      // 點擊其他地方取消 focus
+      // Clear focus when clicking elsewhere
       setFocusedPoint(null);
     }
 
-    // Pen- 模式：刪除錨點
+    // Pen- mode: Delete anchor point
     if (activeTool === 'pen-remove' && target.classList.contains(styles.controlPoint)) {
       const lineIndex = parseInt(target.getAttribute('data-line-index') || '0');
       const pointIndex = parseInt(target.getAttribute('data-point-index') || '0');
@@ -282,7 +282,7 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
       const newLines = JSON.parse(JSON.stringify(lines)) as LineState[];
       const anchors = newLines[lineIndex][mode].filter((p) => p.type === 'anchor');
 
-      // 至少保留 2 個錨點
+      // Keep at least 2 anchor points
       if (anchors.length > 2) {
         newLines[lineIndex][mode].splice(pointIndex, 1);
         setHoveredPoint(null); // Clear hover state to prevent accessing deleted point
@@ -300,9 +300,9 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
       return;
     }
 
-    // Pen+ 模式：點擊路徑在最近線段中間插入錨點，或點擊空白處延伸頭尾點
+    // Pen+ mode: Insert anchor point in middle of nearest segment, or extend head/tail points
     if (activeTool === 'pen-add') {
-      // Case 1: 點擊路徑 - 在線段中間插入
+      // Case 1: Click path - insert in middle of segment
       if (target.classList.contains(styles.editorPath)) {
         const lineIndex = parseInt(
           target.getAttribute('data-line-index') ||
@@ -319,7 +319,7 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
         const currentPoints = newLines[lineIndex][mode];
         const anchors = currentPoints.filter((p) => p.type === 'anchor');
 
-        // 找到點擊位置最近的線段
+        // Find nearest line segment to click position
         let minDist = Infinity;
         let insertAfterIndex = 0;
 
@@ -327,7 +327,7 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
           const p1 = anchors[i];
           const p2 = anchors[i + 1];
 
-          // 計算點到線段的距離
+          // Calculate distance from point to segment
           const dist = pointToSegmentDistance(x, y, p1.x, p1.y, p2.x, p2.y);
           if (dist < minDist) {
             minDist = dist;
@@ -335,19 +335,19 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
           }
         }
 
-        // 找到對應的原始索引位置（包含 control 點）
+        // Find corresponding original index position (including control points)
         const anchorIndices = currentPoints
           .map((p, i) => (p.type === 'anchor' ? i : -1))
           .filter((i) => i !== -1);
         const insertPosition = anchorIndices[insertAfterIndex + 1];
 
-        // 插入新錨點
+        // Insert new anchor point
         newLines[lineIndex][mode].splice(insertPosition, 0, { x, y, type: 'anchor' });
         onLinesChange(newLines);
         return;
       }
 
-      // Case 2: 點擊空白處 - 如果有選中的頭尾點，則延伸新點
+      // Case 2: Click blank area - if head/tail point is focused, extend with new point
       if (
         focusedPoint &&
         !target.classList.contains(styles.controlPoint) &&
@@ -359,7 +359,7 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
           .map((p, i) => (p.type === 'anchor' ? i : -1))
           .filter((i) => i !== -1);
 
-        // 檢查是否為頭或尾點
+        // Check if this is head or tail point
         const isHead = pointIndex === anchorIndices[0];
         const isTail = pointIndex === anchorIndices[anchorIndices.length - 1];
 
@@ -371,14 +371,14 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
           const newLines = JSON.parse(JSON.stringify(lines)) as LineState[];
 
           if (isHead) {
-            // 在頭部插入新點
+            // Insert new point at head
             newLines[lineIndex][mode].unshift({ x, y, type: 'anchor' });
-            // 更新 focus 到新的頭點（index 變成 0）
+            // Update focus to new head point (index becomes 0)
             setFocusedPoint({ lineIndex, pointIndex: 0 });
           } else {
-            // 在尾部插入新點
+            // Insert new point at tail
             newLines[lineIndex][mode].push({ x, y, type: 'anchor' });
-            // 更新 focus 到新的尾點
+            // Update focus to new tail point
             const newLength = newLines[lineIndex][mode].length;
             setFocusedPoint({ lineIndex, pointIndex: newLength - 1 });
           }
@@ -389,7 +389,7 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
       }
     }
 
-    // Select 模式或 Pen+ 模式：拖曳錨點
+    // Select mode or Pen+ mode: Drag anchor points
     if (
       (activeTool === 'select' || activeTool === 'pen-add') &&
       target.classList.contains(styles.controlPoint)
@@ -434,7 +434,7 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
   const handleSvgMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     const target = e.target as Element;
 
-    // Pen+ 模式：顯示預覽點或 crosshair cursor
+    // Pen+ mode: Show preview point or crosshair cursor
     if (activeTool === 'pen-add') {
       if (target.classList.contains(styles.editorPath)) {
         const lineIndex = parseInt(
@@ -451,7 +451,7 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
         setPenAddPreview({ x, y, lineIndex });
         setShowCrosshairCursor(false);
       } else if (!target.classList.contains(styles.controlPoint)) {
-        // 檢查是否有 focused 的頭尾點
+        // Check if there is a focused head or tail point
         if (focusedPoint) {
           const currentPoints = lines[focusedPoint.lineIndex][mode];
           const anchorIndices = currentPoints

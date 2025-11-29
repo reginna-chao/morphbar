@@ -3,7 +3,7 @@ export interface Point {
   y: number;
 }
 
-// PathPoint 用於 Bezier 曲線，區分錨點與控制點
+// PathPoint is used for Bezier curves, distinguishes between anchor and control points
 export interface PathPoint extends Point {
   type: 'anchor' | 'control';
 }
@@ -47,5 +47,5 @@ export interface DraggedPoint {
   originY: number;
 }
 
-// 工具類型
+// Tool types
 export type Tool = 'select' | 'pen-add' | 'pen-remove';

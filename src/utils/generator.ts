@@ -2,15 +2,15 @@ import type { LineState, Method, PathData, GeneratedCode, ClassNameConfig, PathP
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-// 生成 SVG 路徑字串，支援多點與 Bezier 曲線
+// Generate SVG path string, supports multi-point and Bezier curves
 function generatePathString(points: PathPoint[]): string {
   if (points.length < 2) return '';
 
   const anchors = points.filter(p => p.type === 'anchor');
   if (anchors.length < 2) return '';
 
-  // 簡化版：目前先將所有錨點連成直線
-  // 未來可以根據控制點生成 Bezier 曲線
+  // Simplified version: Currently connects all anchor points with straight lines
+  // Future: Can generate Bezier curves based on control points
   const commands = [`M ${anchors[0].x} ${anchors[0].y}`];
 
   for (let i = 1; i < anchors.length; i++) {
@@ -51,7 +51,7 @@ function calculatePathData(line: LineState): PathData {
   const closeAnchors = close.filter(p => p.type === 'anchor');
 
   if (menuAnchors.length < 2 || closeAnchors.length < 2) {
-    // 處理錯誤情況
+    // Handle error case
     return {
       d: '',
       totalLength: 0,
@@ -65,18 +65,18 @@ function calculatePathData(line: LineState): PathData {
   const menuLast = menuAnchors[menuAnchors.length - 1];
   const closeFirst = closeAnchors[0];
 
-  // 計算連接兩個狀態的貝茲曲線控制點
+  // Calculate Bezier curve control points connecting the two states
   const dx = closeFirst.x - menuLast.x;
   const cp1 = { x: menuLast.x + dx * 0.5, y: menuLast.y };
   const cp2 = { x: closeFirst.x - dx * 0.5, y: closeFirst.y };
 
-  // 生成完整路徑：menu 狀態 -> 過渡曲線 -> close 狀態
+  // Generate complete path: menu state -> transition curve -> close state
   const menuPath = generatePathString(menu);
   const closePath = generatePathString(close);
 
   const d = `${menuPath} C ${cp1.x} ${cp1.y} ${cp2.x} ${cp2.y} ${closeFirst.x} ${closeFirst.y} ${closePath.substring(closePath.indexOf('L'))}`;
 
-  // 計算路徑長度
+  // Calculate path lengths
   const pathEl = document.createElementNS(SVG_NS, 'path');
   pathEl.setAttribute('d', d);
   const totalLength = pathEl.getTotalLength();
