@@ -14,7 +14,7 @@ export interface LineState {
   color?: string; // Optional custom color for the line
 }
 
-export type Lines = [LineState, LineState, LineState];
+export type Lines = LineState[];
 
 export type Mode = 'menu' | 'close';
 

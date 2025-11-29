@@ -1,6 +1,7 @@
 import Preview from './Preview';
 import SegmentedControl from './ui/SegmentedControl';
-import type { Mode, Method, GeneratedCode } from '../types';
+import LineManager from './LineManager';
+import type { Mode, Method, GeneratedCode, Lines } from '../types';
 import styles from './ControlsSidebar.module.scss';
 
 interface ControlsSidebarProps {
@@ -8,6 +9,8 @@ interface ControlsSidebarProps {
   onModeChange: (mode: Mode) => void;
   method: Method;
   generatedCode: GeneratedCode;
+  lines: Lines;
+  onLinesChange: (lines: Lines) => void;
 }
 
 export default function ControlsSidebar({
@@ -15,9 +18,15 @@ export default function ControlsSidebar({
   onModeChange,
   method,
   generatedCode,
+  lines,
+  onLinesChange,
 }: ControlsSidebarProps) {
   return (
     <aside className={styles.controlsSidebar}>
+      <div className={styles.controlGroup}>
+        <LineManager lines={lines} onLinesChange={onLinesChange} />
+      </div>
+
       <div className={styles.controlGroup}>
         <h2>Edit State</h2>
         <SegmentedControl
