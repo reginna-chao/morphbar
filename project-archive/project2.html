@@ -8,6 +8,7 @@
     <style>
         :root {
             --hd-height: 2.5rem;
+            --bs-white: #fff;
         }
 
         button {
@@ -15,86 +16,57 @@
             background: transparent;
         }
 
-        /* --- .ham --- */
-        .ham {
-            margin-right: -1.25rem;
-            margin-left: 0.625rem;
-            padding: 0.625rem;
-            border-radius: 50%;
-            cursor: pointer;
+        .hd-ham {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0;
+            height: 0;
         }
 
-        @media (min-width: 768px) {
-            .ham {
-                margin-right: -1.125rem;
-            }
+        .hd-ham__label {
+            position: relative;
+            z-index: 10;
+            margin: 0;
         }
 
-        @media (hover: hover) {
-            .ham {
-                transition: 0.3s;
-            }
-
-            .ham:hover,
-            .ham:focus {
-                background-color: rgba(13, 110, 253, 0.05);
-                transition-duration: 0.15s;
-            }
-        }
-
-        .svg {
-            pointer-events: none;
-        }
-
-        @media (max-width: 767.98px) {
-            .svg {
-                transform: scale(0.7);
-            }
-        }
-
-        .g {
+        .hd-ham__svg {
+            display: block;
             transition: transform 0.3s;
         }
 
-        .top,
-        .center,
-        .bottom {
-            transition: stroke-dashoffset 0.3s;
+        .hd-ham__line {
+            stroke: #e60012; 
+            transition: 0.3s;
         }
 
-        .top {
-            stroke-dasharray: 30px 80px;
-            stroke-dashoffset: 120px;
+        .hd-ham__line.middle {
+            transform-origin: 50px 50px;
         }
 
-        .center {
-            stroke-dasharray: 24px 80px;
-            stroke-dashoffset: 104px;
+        /* --- Checked --- */
+
+        .hd-ham:checked ~ .hd-main__cont-inside .hd-ham__svg {
+            transform: rotate(45deg);
         }
 
-        .bottom {
-            stroke-dasharray: 30px 80px;
-            stroke-dashoffset: 128px;
+        .hd-ham:checked ~ .hd-main__cont-inside .hd-ham__line {
+            stroke: #e60012;
         }
 
-        .is-menu-open .g {
-            transform: translateX(-40px);
+        .hd-ham:checked ~ .hd-main__cont-inside .hd-ham__line.top {
+            stroke-dashoffset: -64px;
         }
 
-        .is-menu-open .top {
-            stroke-dashoffset: 65px;
+        .hd-ham:checked ~ .hd-main__cont-inside .hd-ham__line.middle {
+            transform: rotate(90deg);
         }
 
-        .is-menu-open .center {
-            stroke-dashoffset: 50px;
+        .hd-ham:checked ~ .hd-main__cont-inside .hd-ham__line.bottom {
+            stroke-dashoffset: -64px;
         }
 
-        .is-menu-open .bottom {
-            stroke-dashoffset: 73px;
-        }
-
-        .visually-hidden,
-        .show-for-sr {
+        .visually-hidden {
             position: absolute;
             width: 1px;
             height: 1px;
@@ -108,107 +80,68 @@
 
         /* SASS version
         // Hamburger Menu
-        .ham {
-            $root: &;
+        .hd-ham
+            $root: &
 
-            margin-right: rem-calc(-20);
-            margin-left: rem-calc(10);
-            padding: rem-calc(10);
-            border-radius: 50%;
+            position: absolute
+            top: 0
+            left: 0
+            width: 0
+            height: 0
 
-            @include media-breakpoint-up(md) {
-                margin-right: rem-calc(-18);
-            }
+            &__label
+                +bem-tag(label)
+                    position: relative
+                    z-index: 10
+                    margin: 0
+                        
+            &__svg
+                display: block
+                transition: transform 0.3s
 
-            @include media-breakpoint-hover {
-                transition: $transition-time-normal;
+            &__line
+                stroke: $primary-color
+                transition: 0.3s
+                &.middle
+                    transform-origin: 50px 50px
 
-                &:hover,
-                &:focus {
-                    background-color: rgba($primary-color, 5%);
-                    transition-duration: $transition-time-hover;
-                }
-            }
-        }
-
-        .svg {
-            pointer-events: none;
-
-            @include media-breakpoint-down(md) {
-                transform: scale(#{(28 / 40)});
-            }
-        }
-
-        .g {
-            transition: transform $transition-time-normal;
-        }
-
-        @at-root %path {
-            transition: stroke-dashoffset $transition-time-normal;
-        }
-
-        .top {
-            @extend %path;
-
-            stroke-dasharray: 30px 80px;
-            stroke-dashoffset: 120px;
-        }
-
-        .center {
-            @extend %path;
-
-            stroke-dasharray: 24px 80px;
-            stroke-dashoffset: 104px;
-        }
-
-        .bottom {
-            @extend %path;
-
-            stroke-dasharray: 30px 80px;
-            stroke-dashoffset: 128px;
-        }
-
-        .active {
-            .g {
-                transform: translateX(-40px);
-            }
-
-            .top {
-                stroke-dashoffset: 65px;
-            }
-
-            .center {
-                stroke-dashoffset: 50px;
-            }
-
-            .bottom {
-                stroke-dashoffset: 73px;
-            }
-        }
+            // Click hamburger menu
+            &:checked
+                ~ .hd-main__cont-inside
+                    #{$root}
+                        &__svg
+                            transform: rotate(45deg)
+                        &__line
+                            stroke: $primary-color
+                            &.top
+                                stroke-dashoffset: -64px
+                            &.middle
+                                transform: rotate(90deg)
+                            &.bottom
+                                stroke-dashoffset: -64px
         */
     </style>
 </head>
 
 <body>
-    <p>202208_ne</p>
+    <p>202101_ha</p>
 
-    <button type="button" aria-label="Menu" class="ham" id="hd-ham">
-        <svg class="svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40">
-            <g class="g" fill="none" stroke="#0c0c0d" stroke-width="2">
-                <path class="top"
-                    d="M12 11.86h20s2.62-.15 4 1.39c1.59 1.78 6.7 12.56 8.27 14.68s3.73.42 3.73.42l23.13-16.7"></path>
-                <path class="center" d="M8 20h51.57"></path>
-                <path class="bottom"
-                    d="M20 28.14h12s2.62 0 3.69-1.56C37 24.73 41.3 13.33 44 11.65a4.23 4.23 0 0 1 4 0l23.13 16.7">
-                </path>
-            </g>
-        </svg>
-    </button>
+    <input class="hd-ham" id="hd-ham" type="checkbox" title="Open Menu"/>
+    <div class="hd-main__cont-inside">
+        <label class="hd-ham__label" for="hd-ham"><span class="show-for-sr">Menu</span>
+            <svg class="hd-ham__svg no-selection" viewbox="0 0 100 100" width="50" aria-label="hidden">
+                <path class="hd-ham__line top" fill="none" stroke="#000" stroke-width="5" stroke-linecap="round" stroke-dasharray="40 160" d="m 30,33 h 40 c 3.722839,0 7.5,3.126468 7.5,8.578427 0,5.451959 -2.727029,8.421573 -7.5,8.421573 h -20"></path>
+                <path class="hd-ham__line middle" fill="none" stroke="#000" stroke-width="5" stroke-linecap="round" stroke-dasharray="40 142" d="m 30,50 h 40"></path>
+                <path class="hd-ham__line bottom" fill="none" stroke="#000" stroke-width="5" stroke-linecap="round" stroke-dasharray="40 85" d="m 70,67 h -40 c 0,0 -7.5,-0.802118 -7.5,-8.365747 0,-7.563629 7.5,-8.634253 7.5,-8.634253 h 20"></path>
+            </svg>
+        </label>
+    </div>
+
 
     <script>
         /* ------------------------------- [START] Hamburder Menu */
         function initHamburgerMenu() {
-            const hamburgerMenuClassIsActive = 'is-menu-open';
+            const hamburgerMenuClassIsActive = 'is-active';
             const hamburgerMenu = document.querySelector('#hd-ham');
 
             hamburgerMenu.addEventListener('click', () => {

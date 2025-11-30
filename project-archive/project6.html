@@ -8,7 +8,6 @@
     <style>
         :root {
             --hd-height: 2.5rem;
-            --bs-white: #fff;
         }
 
         button {
@@ -16,62 +15,86 @@
             background: transparent;
         }
 
-        .hd-ham {
-            --size: calc(var(--hd-height) - .625rem);
-            --color: var(--bs-white);
-            --duration: 1s;
-            position: relative;
-            display: block;
-            width: var(--size);
-            height: var(--size);
+        /* --- .ham --- */
+        .ham {
+            margin-right: -1.25rem;
+            margin-left: 0.625rem;
+            padding: 0.625rem;
+            border-radius: 50%;
             cursor: pointer;
-            background: #333;
         }
 
-        .hd-ham:focus {
-            box-shadow: none
+        @media (min-width: 768px) {
+            .ham {
+                margin-right: -1.125rem;
+            }
         }
 
-        .hd-ham:before {
-            content: "";
-            display: block;
-            padding-top: 100%
+        @media (hover: hover) {
+            .ham {
+                transition: 0.3s;
+            }
+
+            .ham:hover,
+            .ham:focus {
+                background-color: rgba(13, 110, 253, 0.05);
+                transition-duration: 0.15s;
+            }
         }
 
-        .hd-ham__svg {
-            --size: 24px;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            display: block;
-            margin-top: calc(var(--size) / 2 * -1);
-            margin-left: calc(var(--size) / 2 * -1);
-            width: var(--size);
-            pointer-events: none
+        .svg {
+            pointer-events: none;
         }
 
-        .hd-ham__g {
-            transition: transform var(--duration)
+        @media (max-width: 767.98px) {
+            .svg {
+                transform: scale(0.7);
+            }
         }
 
-        .hd-ham__path {
-            stroke-dasharray: 22.56 71.28;
-            stroke-dashoffset: 93.84;
-            transform-origin: 12px 12px;
-            transition-duration: var(--duration);
-            transition-property: stroke-dasharray, stroke-dashoffset
+        .g {
+            transition: transform 0.3s;
         }
 
-        .hd-ham.is-menu-open .hd-ham__g {
-            transform: translate(-24px)
+        .top,
+        .center,
+        .bottom {
+            transition: stroke-dashoffset 0.3s;
         }
 
-        .hd-ham.is-menu-open .line-t,
-        .hd-ham.is-menu-open .line-b {
-            stroke-dashoffset: 22.56
+        .top {
+            stroke-dasharray: 30px 80px;
+            stroke-dashoffset: 120px;
         }
 
-        .visually-hidden {
+        .center {
+            stroke-dasharray: 24px 80px;
+            stroke-dashoffset: 104px;
+        }
+
+        .bottom {
+            stroke-dasharray: 30px 80px;
+            stroke-dashoffset: 128px;
+        }
+
+        .is-menu-open .g {
+            transform: translateX(-40px);
+        }
+
+        .is-menu-open .top {
+            stroke-dashoffset: 65px;
+        }
+
+        .is-menu-open .center {
+            stroke-dashoffset: 50px;
+        }
+
+        .is-menu-open .bottom {
+            stroke-dashoffset: 73px;
+        }
+
+        .visually-hidden,
+        .show-for-sr {
             position: absolute;
             width: 1px;
             height: 1px;
@@ -85,69 +108,81 @@
 
         /* SASS version
         // Hamburger Menu
-        .hd-ham {
+        .ham {
             $root: &;
 
-            --size: calc(var(--hd-height) - #{rem-calc(5 * 2)});
-            --color: var(--bs-white);
-            --duration: 1s;
+            margin-right: rem-calc(-20);
+            margin-left: rem-calc(10);
+            padding: rem-calc(10);
+            border-radius: 50%;
 
-            position: relative;
-            display: block;
-            width: var(--size);
-            height: var(--size);
-
-            &:focus {
-                box-shadow: none;
+            @include media-breakpoint-up(md) {
+                margin-right: rem-calc(-18);
             }
 
-            &::before {
-                @include before-img-size(1, 1, true);
-            }
+            @include media-breakpoint-hover {
+                transition: $transition-time-normal;
 
-            $ham-icon-size: 24px;
-            $ham-path-t-width: 22.56;
-            $ham-path-t-length: 93.84;
-            $ham-path-t-active-length: 22.56;
-            $ham-move: -24px;
-
-            &__svg {
-                --size: #{$ham-icon-size};
-
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                display: block;
-                margin-top: calc(var(--size) / 2 * -1);
-                margin-left: calc(var(--size) / 2 * -1);
-                width: var(--size);
-                pointer-events: none;
-            }
-
-            &__g {
-                transition: transform var(--duration);
-            }
-
-            &__path {
-                stroke-dasharray: $ham-path-t-width #{($ham-path-t-length - $ham-path-t-width)};
-                stroke-dashoffset: $ham-path-t-length;
-                transform-origin: math.div($ham-icon-size, 2) math.div($ham-icon-size, 2);
-                transition-duration: var(--duration);
-                transition-property: stroke-dasharray, stroke-dashoffset;
-            }
-
-            // Open
-            &.is-menu-open {
-                #{$root} {
-                &__g {
-                    transform: translateX(#{$ham-move});
+                &:hover,
+                &:focus {
+                    background-color: rgba($primary-color, 5%);
+                    transition-duration: $transition-time-hover;
                 }
-                }
+            }
+        }
 
-                .line-t,
-                .line-b {
-                stroke-dashoffset: $ham-path-t-active-length;
-                }
+        .svg {
+            pointer-events: none;
+
+            @include media-breakpoint-down(md) {
+                transform: scale(#{(28 / 40)});
+            }
+        }
+
+        .g {
+            transition: transform $transition-time-normal;
+        }
+
+        @at-root %path {
+            transition: stroke-dashoffset $transition-time-normal;
+        }
+
+        .top {
+            @extend %path;
+
+            stroke-dasharray: 30px 80px;
+            stroke-dashoffset: 120px;
+        }
+
+        .center {
+            @extend %path;
+
+            stroke-dasharray: 24px 80px;
+            stroke-dashoffset: 104px;
+        }
+
+        .bottom {
+            @extend %path;
+
+            stroke-dasharray: 30px 80px;
+            stroke-dashoffset: 128px;
+        }
+
+        .active {
+            .g {
+                transform: translateX(-40px);
+            }
+
+            .top {
+                stroke-dashoffset: 65px;
+            }
+
+            .center {
+                stroke-dashoffset: 50px;
+            }
+
+            .bottom {
+                stroke-dashoffset: 73px;
             }
         }
         */
@@ -155,19 +190,17 @@
 </head>
 
 <body>
-    <p>202507_he</p>
+    <p>202208_ne</p>
 
-    <button class="hd-ham navbar-toggler" id="hd-ham" type="button" data-bs-toggle="offcanvas"
-        data-bs-target="#headerMainMenu" aria-controls="headerMainMenu" aria-expanded="false"
-        aria-label="Toggle navigation"><span class="visually-hidden">選單</span>
-        <svg class="hd-ham__svg" xmlns="http://www.w3.org/2000/svg" x="0" y="0" viewBox="0 0 24 24" width="24"
-            height="24" aria-hidden="true" tabindex="-1">
-            <g class="hd-ham__g" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round"
-                stroke-width="1" fill-rule="evenodd" tabindex="-1">
-                <path class="path hd-ham__path line-t"
-                    d="M2,8.5 L25.23,8.5 L25.23,8.59 a11.31,11.31,0,1,0,19,-4.36 l-0.23,-0.23 L28,20"></path>
-                <path class="path hd-ham__path line-b"
-                    d="M2,15.5 L25.23,15.5 L25.23,15.41 a11.31,11.31,0,1,1,19,4.36 l-0.23,0.23 L28,4"></path>
+    <button type="button" aria-label="Menu" class="ham" id="hd-ham">
+        <svg class="svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40">
+            <g class="g" fill="none" stroke="#0c0c0d" stroke-width="2">
+                <path class="top"
+                    d="M12 11.86h20s2.62-.15 4 1.39c1.59 1.78 6.7 12.56 8.27 14.68s3.73.42 3.73.42l23.13-16.7"></path>
+                <path class="center" d="M8 20h51.57"></path>
+                <path class="bottom"
+                    d="M20 28.14h12s2.62 0 3.69-1.56C37 24.73 41.3 13.33 44 11.65a4.23 4.23 0 0 1 4 0l23.13 16.7">
+                </path>
             </g>
         </svg>
     </button>

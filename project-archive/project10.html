@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        :root {
+            --hd-height: 2.5rem;
+            --bs-white: #fff;
+        }
+
+        button {
+            border: none;
+            background: transparent;
+        }
+
+        .hd-ham {
+            --size: calc(var(--hd-height) - .625rem);
+            --color: var(--bs-white);
+            --duration: 1s;
+            position: relative;
+            display: block;
+            width: var(--size);
+            height: var(--size);
+            cursor: pointer;
+            background: #333;
+        }
+
+        .hd-ham:focus {
+            box-shadow: none
+        }
+
+        .hd-ham:before {
+            content: "";
+            display: block;
+            padding-top: 100%
+        }
+
+        .hd-ham__svg {
+            --size: 24px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            display: block;
+            margin-top: calc(var(--size) / 2 * -1);
+            margin-left: calc(var(--size) / 2 * -1);
+            width: var(--size);
+            pointer-events: none
+        }
+
+        .hd-ham__g {
+            transition: transform var(--duration)
+        }
+
+        .hd-ham__path {
+            stroke-dasharray: 22.56 71.28;
+            stroke-dashoffset: 93.84;
+            transform-origin: 12px 12px;
+            transition-duration: var(--duration);
+            transition-property: stroke-dasharray, stroke-dashoffset
+        }
+
+        .hd-ham.is-menu-open .hd-ham__g {
+            transform: translate(-24px)
+        }
+
+        .hd-ham.is-menu-open .line-t,
+        .hd-ham.is-menu-open .line-b {
+            stroke-dashoffset: 22.56
+        }
+
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0
+        }
+
+        /* SASS version
+        // Hamburger Menu
+        .hd-ham {
+            $root: &;
+
+            --size: calc(var(--hd-height) - #{rem-calc(5 * 2)});
+            --color: var(--bs-white);
+            --duration: 1s;
+
+            position: relative;
+            display: block;
+            width: var(--size);
+            height: var(--size);
+
+            &:focus {
+                box-shadow: none;
+            }
+
+            &::before {
+                @include before-img-size(1, 1, true);
+            }
+
+            $ham-icon-size: 24px;
+            $ham-path-t-width: 22.56;
+            $ham-path-t-length: 93.84;
+            $ham-path-t-active-length: 22.56;
+            $ham-move: -24px;
+
+            &__svg {
+                --size: #{$ham-icon-size};
+
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                display: block;
+                margin-top: calc(var(--size) / 2 * -1);
+                margin-left: calc(var(--size) / 2 * -1);
+                width: var(--size);
+                pointer-events: none;
+            }
+
+            &__g {
+                transition: transform var(--duration);
+            }
+
+            &__path {
+                stroke-dasharray: $ham-path-t-width #{($ham-path-t-length - $ham-path-t-width)};
+                stroke-dashoffset: $ham-path-t-length;
+                transform-origin: math.div($ham-icon-size, 2) math.div($ham-icon-size, 2);
+                transition-duration: var(--duration);
+                transition-property: stroke-dasharray, stroke-dashoffset;
+            }
+
+            // Open
+            &.is-menu-open {
+                #{$root} {
+                &__g {
+                    transform: translateX(#{$ham-move});
+                }
+                }
+
+                .line-t,
+                .line-b {
+                stroke-dashoffset: $ham-path-t-active-length;
+                }
+            }
+        }
+        */
+    </style>
+</head>
+
+<body>
+    <p>202507_he</p>
+
+    <button class="hd-ham navbar-toggler" id="hd-ham" type="button" data-bs-toggle="offcanvas"
+        data-bs-target="#headerMainMenu" aria-controls="headerMainMenu" aria-expanded="false"
+        aria-label="Toggle navigation"><span class="visually-hidden">Menu</span>
+        <svg class="hd-ham__svg" xmlns="http://www.w3.org/2000/svg" x="0" y="0" viewBox="0 0 24 24" width="24"
+            height="24" aria-hidden="true" tabindex="-1">
+            <g class="hd-ham__g" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round"
+                stroke-width="1" fill-rule="evenodd" tabindex="-1">
+                <path class="path hd-ham__path line-t"
+                    d="M2,8.5 L25.23,8.5 L25.23,8.59 a11.31,11.31,0,1,0,19,-4.36 l-0.23,-0.23 L28,20"></path>
+                <path class="path hd-ham__path line-b"
+                    d="M2,15.5 L25.23,15.5 L25.23,15.41 a11.31,11.31,0,1,1,19,4.36 l-0.23,0.23 L28,4"></path>
+            </g>
+        </svg>
+    </button>
+
+    <script>
+        /* ------------------------------- [START] Hamburder Menu */
+        function initHamburgerMenu() {
+            const hamburgerMenuClassIsActive = 'is-menu-open';
+            const hamburgerMenu = document.querySelector('#hd-ham');
+
+            hamburgerMenu.addEventListener('click', () => {
+                hamburgerMenu.classList.toggle(hamburgerMenuClassIsActive);
+                document.body.classList.toggle(hamburgerMenuClassIsActive);
+            });
+        }
+        window.addEventListener('load', initHamburgerMenu);
+        /* ------------------------------- [END] Hamburder Menu */
+
+    </script>
+</body>
+
+</html>

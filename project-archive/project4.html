@@ -16,66 +16,43 @@
             background: transparent;
         }
 
-        .hd-ham {
-            position: relative;
-            z-index: 999;
-            display: block;
-            cursor: pointer;
-            width: var(--hd-height);
-            background-color: #eee;
-        }
-
-        .hd-ham::before {
-            content: "";
-            display: block;
-            padding-top: 100%
-        }
-
         .hd-ham__svg {
-            --size: 30px;
-            position: absolute;
-            top: 50%;
-            left: 50%;
             display: block;
-            margin-top: calc(var(--size)/ 2 * -1);
-            margin-left: calc(var(--size)/ 2 * -1);
-            width: var(--size);
-            pointer-events: none
+            transition: transform 0.4s;
         }
-
-        .hd-ham__g {
-            transition: transform 1s
+        .hd-ham__line {
+            fill: none;
+            stroke: #096;
+            stroke-width: 3;
+            stroke-linecap: round;
+            transition: stroke-dasharray 0.4s, stroke-dashoffset 0.4s;
         }
-
-        .hd-ham__path {
-            stroke-dasharray: 18 29;
-            stroke-dashoffset: 47;
-            transform-origin: 15px 15px;
-            transition-duration: 1s;
-            transition-property: stroke-dasharray, stroke-dashoffset
+        .hd-ham__line.top {
+            stroke-dasharray: 40 82;
         }
-
-        .hd-ham__path.line-c {
-            stroke-dasharray: 18 99 72 99;
-            stroke-dashoffset: 288
+        .hd-ham__line.middle {
+            stroke-dasharray: 40 111;
+            stroke-dashoffset: 10;
         }
-
-        .hd-ham.is-menu-open .hd-ham__g {
-            transform: translateX(-22px)
+        .hd-ham__line.bottom {
+            stroke-dasharray: 40 161;
         }
-
-        .hd-ham.is-menu-open .line-b,
-        .hd-ham.is-menu-open .line-t {
-            stroke-dashoffset: 20
+        .hd-ham.is-open .hd-ham__svg {
+            transform: rotate(45deg);
         }
-
-        .hd-ham.is-menu-open .line-c {
-            stroke-dashoffset: 72;
-            transition-duration: 1.5s
+        .hd-ham.is-open .hd-ham__line.top {
+            stroke-dasharray: 17 82;
+            stroke-dashoffset: -62;
         }
-
-        .visually-hidden,
-        .show-for-sr {
+        .hd-ham.is-open .hd-ham__line.middle {
+            stroke-dashoffset: 23px;
+            stroke-dashoffset: 0;
+        }
+        .hd-ham.is-open .hd-ham__line.bottom {
+            stroke-dashoffset: -83px;
+        }
+        
+        .visually-hidden {
             position: absolute;
             width: 1px;
             height: 1px;
@@ -92,105 +69,77 @@
         .hd-ham {
             $root: &;
 
-            position: relative;
-            z-index: 999;
-            display: block;
-            cursor: pointer;
-            width: var(--hd-height);
-
-            @include breakpoint($mobile-menu-breakpoint) {
-                display: none;
-            }
-
-            &::before {
-                @include before-img-size(1, 1, true);
-            }
-
-            $ham-icon-size: 30px;
-            $ham-path-t-width: 18;
-            $ham-path-t-length: 47;
-            $ham-path-t-active-length: 20;
-            $ham-path-c-width: 18;
-            $ham-path-c-length: 117;
-            $ham-path-c-active-length: 72;
-            $ham-path-c-space: $ham-path-c-length - $ham-path-c-width;
-            $ham-move: -22px;
-
             &__svg {
-                --size: #{$ham-icon-size};
-
-                position: absolute;
-                top: 50%;
-                left: 50%;
                 display: block;
-                margin-top: calc(var(--size) / 2 * -1);
-                margin-left: calc(var(--size) / 2 * -1);
-                width: var(--size);
-                pointer-events: none;
+                transition: transform 0.4s;
             }
 
-            &__g {
-                transition: transform 1s;
-            }
+            &__line {
+                fill: none;
+                stroke: $primary-color;
+                stroke-width: 3;
+                stroke-linecap: round;
+                transition: stroke-dasharray 0.4s, stroke-dashoffset 0.4s;
 
-            &__path {
-                stroke-dasharray: $ham-path-t-width #{($ham-path-t-length - $ham-path-t-width)};
-                stroke-dashoffset: $ham-path-t-length;
-                transform-origin: math.div($ham-icon-size, 2) math.div($ham-icon-size, 2);
-                transition-duration: 1s;
-                transition-property: stroke-dasharray, stroke-dashoffset;
+                &.top {
+                    stroke-dasharray: 40 82;
+                }
 
-                &.line-c {
-                    stroke-dasharray: $ham-path-c-width $ham-path-c-space $ham-path-c-active-length $ham-path-c-space;
-                    stroke-dashoffset: ($ham-path-c-width + $ham-path-c-space + $ham-path-c-active-length + $ham-path-c-space);
+                &.middle {
+                    stroke-dasharray: 40 111;
+                    stroke-dashoffset: 10;
+                }
+
+                &.bottom {
+                    stroke-dasharray: 40 161;
                 }
             }
 
-            // Open
-            &.is-menu-open {
+            // Active (Open) Style
+            &.is-open {
                 #{$root} {
-                    &__g {
-                        transform: translateX(#{$ham-move});
+                    &__svg {
+                        transform: rotate(45deg);
                     }
-                }
 
-                .line-t,
-                .line-b {
-                    stroke-dashoffset: $ham-path-t-active-length;
-                }
-
-                .line-c {
-                    stroke-dashoffset: $ham-path-c-active-length;
-                    transition-duration: 1.5s;
+                    &__line {
+                        &.top {
+                            stroke-dasharray: 17 82;
+                            stroke-dashoffset: -62;
+                        }
+            
+                        &.middle {
+                            stroke-dashoffset: 23px;
+                            stroke-dashoffset: 0;
+                        }
+            
+                        &.bottom {
+                            stroke-dashoffset: -83px;
+                        }
+                    }
                 }
             }
         }
+        // END. .hd-ham
         */
     </style>
 </head>
 
 <body>
-    <p>202411_mo</p>
+    <p>202205_gu</p>
 
-    <button class="hd-ham" id="hd-ham" type="button" data-toggle="hd-menu" aria-label="Open Menu"><span
-            class="show-for-sr">選單</span>
-        <svg class="hd-ham__svg" xmlns="http://www.w3.org/2000/svg" x="0" y="0" viewBox="0 0 30 30" width="30"
-            height="30" aria-hidden="true" tabindex="-1">
-            <g class="hd-ham__g" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round"
-                stroke-width="1.5" fill-rule="evenodd" tabindex="-1">
-                <path class="path hd-ham__path line-t" d="M6 21 L33 21 L45.8 8.3"></path>
-                <path class="path hd-ham__path line-c"
-                    d="M6 15h44.5s0 0 0 0c0-6.4-5.1-11.5-11.5-11.5S27.5 8.6 27.5 15c0 0 0 0 0 0 0 6.3 5.2 11.5 11.5 11.5S50.5 21.4 50.5 15">
-                </path>
-                <path class="path hd-ham__path line-b" d="M6 9h27l12.7 12.7"></path>
-            </g>
+    <button class="hd-ham" id="hd-ham" type="button"><span class="show-for-sr">Menu</span>
+        <svg class="hd-ham__svg" viewBox="0 0 100 100" width="44" aria-hidden="true">
+            <path class="hd-ham__line top" d="m 70,33 h -40 c 0,0 -6,1.368796 -6,8.5 0,7.131204 6,8.5013 6,8.5013 l 20,-0.0013"></path>
+            <path class="hd-ham__line middle" d="m 70,50 h -40"></path>
+            <path class="hd-ham__line bottom" d="m 69.575405,67.073826 h -40 c -5.592752,0 -6.873604,-9.348582 1.371031,-9.348582 8.244634,0 19.053564,21.797129 19.053564,12.274756 l 0,-40"></path>
         </svg>
     </button>
 
     <script>
         /* ------------------------------- [START] Hamburder Menu */
         function initHamburgerMenu() {
-            const hamburgerMenuClassIsActive = 'is-menu-open';
+            const hamburgerMenuClassIsActive = 'is-open';
             const hamburgerMenu = document.querySelector('#hd-ham');
 
             hamburgerMenu.addEventListener('click', () => {

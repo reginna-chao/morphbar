@@ -8,6 +8,7 @@
     <style>
         :root {
             --hd-height: 2.5rem;
+            --bs-white: #fff;
         }
 
         button {
@@ -15,70 +16,38 @@
             background: transparent;
         }
 
-        .hd-ham {
-            position: relative;
-            z-index: 999;
-            display: block;
-            cursor: pointer;
-            width: var(--hd-height)
+        .ham {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1.125rem 0.6875rem;
         }
 
-        .hd-ham::before {
-            content: '';
-            display: block;
-            padding-top: 100%
+        .ham__svg {
+            transition: transform 400ms;
         }
 
-        .hd-ham__svg {
-            --size: 30px;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            display: block;
-            margin-top: calc(var(--size)/ 2 * -1);
-            margin-left: calc(var(--size)/ 2 * -1);
-            width: var(--size);
-            pointer-events: none;
-            transform: rotate(180deg)
+        .ham__line {
+            transition: stroke-dasharray 400ms, stroke-dashoffset 400ms;
         }
 
-        .hd-ham__g {
-            transition: transform 1s
+        .ham.is-open .ham__svg {
+            transform: rotate(45deg);
         }
 
-        .hd-ham__path {
-            stroke-dasharray: 20 33;
-            stroke-dashoffset: 53;
-            transform-origin: 15px 15px;
-            transition-duration: 1s;
-            transition-property: stroke-dasharray, stroke-dashoffset
+        .ham.is-open .ham__top {
+            stroke-dashoffset: 37;
         }
 
-        .hd-ham__path.line-c {
-            stroke-dasharray: 9 31;
-            stroke-dashoffset: 20
+        .ham.is-open .ham__center {
+            stroke-dashoffset: 8;
         }
 
-        .hd-ham.is-menu-open {
-            background-color: #ffc46b
+        .ham.is-open .ham__bottom {
+            stroke-dashoffset: 50;
         }
 
-        .hd-ham.is-menu-open .hd-ham__g {
-            transform: translateX(-30px)
-        }
-
-        .hd-ham.is-menu-open .line-b,
-        .hd-ham.is-menu-open .line-t {
-            stroke-dashoffset: 20
-        }
-
-        .hd-ham.is-menu-open .line-c {
-            stroke-dashoffset: 10;
-            transition-duration: 1.5s
-        }
-
-        .visually-hidden,
-        .show-for-sr {
+        .visually-hidden {
             position: absolute;
             width: 1px;
             height: 1px;
@@ -92,101 +61,51 @@
 
         /* SASS version
         // Hamburger Menu
-        .hd-ham {
-            $root: &;
+        .ham
+            $root: &
 
-            position: relative;
-            z-index: 999;
-            display: block;
-            cursor: pointer;
-            width: var(--hd-height);
+            +fc(center, center)
+            padding: rem-calc(18 11)
 
-            @include breakpoint(large) {
-                display: none;
-            }
+            &__svg
+                transition: transform 400ms
+            &__line
+                transition: stroke-dasharray 400ms, stroke-dashoffset 400ms
 
-            &::before {
-                @include before-img-size(1, 1, true);
-            }
-
-            &__svg {
-                --size: 30px;
-
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                display: block;
-                margin-top: calc(var(--size) / 2 * -1);
-                margin-left: calc(var(--size) / 2 * -1);
-                width: var(--size);
-                pointer-events: none;
-                transform: rotate(180deg);
-            }
-
-            &__g {
-                transition: transform 1s;
-            }
-
-            &__path {
-                stroke-dasharray: 20 (53 - 20);
-                stroke-dashoffset: 53;
-                transform-origin: 15px 15px;
-                transition-duration: 1s;
-                transition-property: stroke-dasharray, stroke-dashoffset;
-
-                &.line-c {
-                    stroke-dasharray: 9 (40 - 9);
-                    stroke-dashoffset: 20;
-                }
-            }
-
-            // Open
-            &.is-menu-open {
-                background-color: $primary-light-1;
-
-                #{$root} {
-                    &__g {
-                        transform: translateX(-30px);
-                    }
-                }
-
-                .line-t,
-                .line-b {
-                    stroke-dashoffset: 20;
-                }
-
-                .line-c {
-                    stroke-dashoffset: 10;
-                    transition-duration: 1.5s;
-                }
-            }
-        }
- 
-         */
+            // Active (Open) Style
+            &.is-open
+                #{$root}
+                    &__svg
+                        transform: rotate(45deg)
+                    &__top
+                        stroke-dashoffset: 37
+                    &__center
+                        stroke-dashoffset: 8
+                    &__bottom
+                        stroke-dashoffset: 50
+        */
     </style>
 </head>
 
 <body>
-    <p>202304_de</p>
+    <p>202103_ri</p>
 
-    <button class="hd-ham" id="hd-ham" type="button" data-toggle="hd-menu" aria-label="Open Menu" aria-expanded="false"
-        aria-controls="hd-menu"><span class="show-for-sr">選單</span>
-        <svg class="hd-ham__svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 30" width="30" aria-hidden="true"
-            tabindex="-1">
-            <g class="hd-ham__g" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round"
-                stroke-width="2" fill-rule="evenodd" tabindex="-1">
-                <path class="path hd-ham__path line-t" tabindex="-1" d="M5.33,6.65H25l6.91.75,6.19.68L51.94,22"></path>
-                <path class="path hd-ham__path line-c" tabindex="-1" d="M45,15H5.33"></path>
-                <path class="path hd-ham__path line-b" tabindex="-1" d="M5.33,23.39H25L38.06,22,51.94,8.08"></path>
+    <button class="ham btn" id="ham" type="button" aria-label="Menu" aria-expanded="false" aria-controls="hd-nav">
+        <svg class="ham__svg" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="62.297 272.1 22 22">
+            <g fill="none" stroke="#3e454f" stroke-width="2" stroke-linecap="round" stroke-miterlimit="10">
+            <path class="ham__line ham__top" stroke-dasharray="14 44" stroke-dashoffset="58" d="M80.297,278.014H66.281c0,0-1.801,0.41-1.801,2.55c0,2.139,1.801,2.551,1.801,2.551l9.016-0.001"></path>
+            <path class="ham__line ham__center" stroke-dasharray="14 28" d="M80.297,283.114H66.281"></path>
+            <path class="ham__line ham__bottom" stroke-dasharray="14 3.1 3 60" stroke-dashoffset="86" d="M80.297,288.238H66.266c-1.678,0-2.061-2.806,0.413-2.806c1,0,1.519,1.467,2.363,3.533c1.208,2.958,4.243,4.143,4.243,1.172 v-14.063"></path>
             </g>
         </svg>
     </button>
 
+
     <script>
         /* ------------------------------- [START] Hamburder Menu */
         function initHamburgerMenu() {
-            const hamburgerMenuClassIsActive = 'is-menu-open';
-            const hamburgerMenu = document.querySelector('#hd-ham');
+            const hamburgerMenuClassIsActive = 'is-open';
+            const hamburgerMenu = document.querySelector('#ham');
 
             hamburgerMenu.addEventListener('click', () => {
                 hamburgerMenu.classList.toggle(hamburgerMenuClassIsActive);
