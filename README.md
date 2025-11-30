@@ -1,3 +1,11 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./images/logo-dark.png" />
+    <source media="(prefers-color-scheme: light)" srcset="./images/logo-light.png" />
+    <img alt="Logo" src="./images/logo-light.png" width="320" />
+  </picture>
+</p>
+
 # MorphBar
 
 Dynamic morphing menu icon generator — create animated hamburger-to-close icons with draggable points.

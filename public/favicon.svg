@@ -1,0 +1,23 @@
+<svg width="183" height="183" viewBox="0 0 183 183" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M18 18L91.1716 91.1716" stroke="#E1E2E1" stroke-width="8" stroke-linecap="round" stroke-dasharray="24 16"/>
+<path d="M18.3431 164.172L91.5147 91.0001" stroke="#E1E2E1" stroke-width="8" stroke-linecap="round" stroke-dasharray="24 16"/>
+<path d="M164.858 18L91.6863 91.1716" stroke="#E1E2E1" stroke-width="8" stroke-linecap="round" stroke-dasharray="24 16"/>
+<path d="M164.515 164.172L91.3431 91.0001" stroke="#E1E2E1" stroke-width="8" stroke-linecap="round" stroke-dasharray="24 16"/>
+<rect x="18" y="36" width="150" height="10" fill="#F8695E"/>
+<circle cx="166" cy="41" r="17" fill="white"/>
+<circle cx="166" cy="41" r="13" fill="#F8695E"/>
+<circle cx="17" cy="41" r="17" fill="white"/>
+<circle cx="17" cy="41" r="13" fill="#F8695E"/>
+<rect x="18" y="86" width="150" height="10" fill="#59C6C5"/>
+<circle cx="166" cy="91" r="17" fill="white"/>
+<circle cx="166" cy="91" r="13" fill="#59C6C5"/>
+<circle cx="17" cy="91" r="17" fill="white"/>
+<circle cx="17" cy="91" r="13" fill="#59C6C5"/>
+<rect x="18" y="136" width="150" height="10" fill="#FDDE70"/>
+<circle cx="166" cy="141" r="17" fill="white"/>
+<circle cx="166" cy="141" r="13" fill="#FDDE70"/>
+<circle cx="17" cy="141" r="17" fill="white"/>
+<circle cx="17" cy="141" r="13" fill="#FDDE70"/>
+<circle cx="92" cy="91" r="8" fill="white"/>
+<circle cx="92" cy="91" r="16.5" stroke="white" stroke-width="5"/>
+</svg>
