@@ -3,13 +3,13 @@ export const DEFAULT_LINE_COLORS = [
   '#ff6b6b', // Red
   '#4ecdc4', // Cyan
   '#ffe66d', // Yellow
-  '#a8e6cf', // Mint
-  '#ff8b94', // Pink
-  '#c7ceea', // Lavender
-  '#ffd3b6', // Peach
-  '#ff9aa2', // Rose
-  '#b5ead7', // Aqua
-  '#dcedc1', // Light green
+  '#7b5df0', // Medium Purple
+  '#ff8f1f', // Orange
+  '#33b679', // Emerald Green
+  '#3a86ff', // Blue
+  '#ff5eaf', // Magenta
+  '#5ec2ff', // Sky Blue
+  '#9c6d3b', // Warm Brown (balanced neutral)
 ];
 
 export function getLineColor(index: number, customColor?: string): string {
