@@ -1,7 +1,7 @@
 {
   "name": "morphbar",
   "description": "MorphBar - Dynamic morphing menu icon generator",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": "Reginna Chao",
   "license": "MIT",
   "type": "module",
