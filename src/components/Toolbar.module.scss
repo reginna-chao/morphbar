@@ -1,0 +1,47 @@
+@use '@/styles/variables.scss' as *;
+
+.toolbar {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  gap: 8px;
+  background: rgba($white, 0.05);
+  padding: 8px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba($black, 0.2);
+  backdrop-filter: blur(10px);
+  z-index: 10;
+}
+
+.toolButton {
+  @include flex-center;
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  color: rgba($white, 0.6);
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba($white, 0.1);
+    color: $white;
+  }
+
+  &.active {
+    background: var(--color-cyan);
+    border-color: var(--color-cyan);
+    color: $black;
+
+    &:hover {
+      background: var(--color-cyan);
+      filter: brightness(1.1);
+    }
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+}

@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import EditorCanvas from '@/components/EditorCanvas';
 import ControlsSidebar from '@/components/ControlsSidebar';
 import CodePanel from '@/components/CodePanel';
@@ -13,32 +15,32 @@ import logoDark from '@/assets/images/logomark-dark.svg';
 const INITIAL_LINES: Lines = [
   {
     menu: [
-      { x: 20, y: 30 },
-      { x: 80, y: 30 },
+      { x: 20, y: 30, type: 'anchor' },
+      { x: 80, y: 30, type: 'anchor' },
     ],
     close: [
-      { x: 20, y: 20 },
-      { x: 80, y: 80 },
+      { x: 20, y: 20, type: 'anchor' },
+      { x: 80, y: 80, type: 'anchor' },
     ],
   },
   {
     menu: [
-      { x: 20, y: 50 },
-      { x: 80, y: 50 },
+      { x: 20, y: 50, type: 'anchor' },
+      { x: 80, y: 50, type: 'anchor' },
     ],
     close: [
-      { x: 50, y: 50 },
-      { x: 50, y: 50 },
+      { x: 50, y: 50, type: 'anchor' },
+      { x: 50, y: 50, type: 'anchor' },
     ], // Collapses to center
   },
   {
     menu: [
-      { x: 20, y: 70 },
-      { x: 80, y: 70 },
+      { x: 20, y: 70, type: 'anchor' },
+      { x: 80, y: 70, type: 'anchor' },
     ],
     close: [
-      { x: 20, y: 80 },
-      { x: 80, y: 20 },
+      { x: 20, y: 80, type: 'anchor' },
+      { x: 80, y: 20, type: 'anchor' },
     ],
   },
 ];
@@ -63,6 +65,18 @@ function App() {
 
   return (
     <>
+      <ToastContainer
+        position="top-center"
+        autoClose={2000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+      />
       <header>
         <div className="header-left">
           <h1 className="header-logo">

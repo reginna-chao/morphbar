@@ -1,6 +1,31 @@
-import type { LineState, Method, PathData, GeneratedCode, ClassNameConfig } from '../types';
+import type {
+  LineState,
+  Method,
+  PathData,
+  GeneratedCode,
+  ClassNameConfig,
+  PathPoint,
+} from '../types';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+
+// Generate SVG path string, supports multi-point and Bezier curves
+function generatePathString(points: PathPoint[]): string {
+  if (points.length < 2) return '';
+
+  const anchors = points.filter((p) => p.type === 'anchor');
+  if (anchors.length < 2) return '';
+
+  // Simplified version: Currently connects all anchor points with straight lines
+  // Future: Can generate Bezier curves based on control points
+  const commands = [`M ${anchors[0].x} ${anchors[0].y}`];
+
+  for (let i = 1; i < anchors.length; i++) {
+    commands.push(`L ${anchors[i].x} ${anchors[i].y}`);
+  }
+
+  return commands.join(' ');
+}
 
 export function generateCode(
   lines: LineState[],
@@ -29,31 +54,54 @@ export function generateCode(
 function calculatePathData(line: LineState): PathData {
   const { menu, close } = line;
 
-  const dx = close[0].x - menu[1].x;
+  const menuAnchors = menu.filter((p) => p.type === 'anchor');
+  const closeAnchors = close.filter((p) => p.type === 'anchor');
 
-  const cp1 = { x: menu[1].x + dx * 0.5, y: menu[1].y };
-  const cp2 = { x: close[0].x - dx * 0.5, y: close[0].y };
+  if (menuAnchors.length < 2 || closeAnchors.length < 2) {
+    // Handle error case
+    return {
+      d: '',
+      totalLength: 0,
+      menuLength: 0,
+      closeLength: 0,
+      offsetMenu: 0,
+      offsetClose: 0,
+    };
+  }
 
-  const d = `M ${menu[0].x} ${menu[0].y} L ${menu[1].x} ${menu[1].y} C ${cp1.x} ${cp1.y} ${cp2.x} ${cp2.y} ${close[0].x} ${close[0].y} L ${close[1].x} ${close[1].y}`;
+  const menuLast = menuAnchors[menuAnchors.length - 1];
+  const closeFirst = closeAnchors[0];
 
+  // Calculate Bezier curve control points connecting the two states
+  const dx = closeFirst.x - menuLast.x;
+  const cp1 = { x: menuLast.x + dx * 0.5, y: menuLast.y };
+  const cp2 = { x: closeFirst.x - dx * 0.5, y: closeFirst.y };
+
+  // Generate complete path: menu state -> transition curve -> close state
+  const menuPath = generatePathString(menu);
+  const closePath = generatePathString(close);
+
+  const d = `${menuPath} C ${cp1.x} ${cp1.y} ${cp2.x} ${cp2.y} ${closeFirst.x} ${closeFirst.y} ${closePath.substring(closePath.indexOf('L'))}`;
+
+  // Calculate path lengths
   const pathEl = document.createElementNS(SVG_NS, 'path');
   pathEl.setAttribute('d', d);
   const totalLength = pathEl.getTotalLength();
 
-  const p1 = document.createElementNS(SVG_NS, 'path');
-  p1.setAttribute('d', `M ${menu[0].x} ${menu[0].y} L ${menu[1].x} ${menu[1].y}`);
-  const menuLength = p1.getTotalLength();
+  const menuEl = document.createElementNS(SVG_NS, 'path');
+  menuEl.setAttribute('d', menuPath);
+  const menuLength = menuEl.getTotalLength();
 
-  const p2 = document.createElementNS(SVG_NS, 'path');
-  p2.setAttribute(
+  const closeEl = document.createElementNS(SVG_NS, 'path');
+  closeEl.setAttribute('d', closePath);
+  const closeLength = closeEl.getTotalLength();
+
+  const connectionEl = document.createElementNS(SVG_NS, 'path');
+  connectionEl.setAttribute(
     'd',
-    `M ${menu[1].x} ${menu[1].y} C ${cp1.x} ${cp1.y} ${cp2.x} ${cp2.y} ${close[0].x} ${close[0].y}`
+    `M ${menuLast.x} ${menuLast.y} C ${cp1.x} ${cp1.y} ${cp2.x} ${cp2.y} ${closeFirst.x} ${closeFirst.y}`
   );
-  const connectionLength = p2.getTotalLength();
-
-  const p3 = document.createElementNS(SVG_NS, 'path');
-  p3.setAttribute('d', `M ${close[0].x} ${close[0].y} L ${close[1].x} ${close[1].y}`);
-  const closeLength = p3.getTotalLength();
+  const connectionLength = connectionEl.getTotalLength();
 
   return {
     d,

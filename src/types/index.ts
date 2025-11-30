@@ -3,9 +3,14 @@ export interface Point {
   y: number;
 }
 
+// PathPoint is used for Bezier curves, distinguishes between anchor and control points
+export interface PathPoint extends Point {
+  type: 'anchor' | 'control';
+}
+
 export interface LineState {
-  menu: [Point, Point];
-  close: [Point, Point];
+  menu: PathPoint[];
+  close: PathPoint[];
 }
 
 export type Lines = [LineState, LineState, LineState];
@@ -41,3 +46,6 @@ export interface DraggedPoint {
   originX: number;
   originY: number;
 }
+
+// Tool types
+export type Tool = 'select' | 'pen-add' | 'pen-remove';

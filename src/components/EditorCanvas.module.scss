@@ -11,6 +11,11 @@
   background: rgba($white, 0.05);
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba($black, 0.3);
+
+  // Cursor styles for different tools
+  &.cursorCrosshair {
+    cursor: crosshair;
+  }
 }
 
 .editorPath {
@@ -43,7 +48,7 @@
   stroke: $white;
   stroke-width: 2;
   cursor: grab;
-  transition: r 0.2s;
+  transition: all 0.2s ease;
 
   // Color coding for control points to match their lines
   &[data-line-index='0'] {
@@ -60,10 +65,28 @@
 
   &:hover {
     r: 8;
+    filter: brightness(1.5);
   }
 
   &:active {
     cursor: grabbing;
+  }
+}
+
+.focusedPoint {
+  r: 8 !important;
+  stroke-width: 3 !important;
+  filter: brightness(1.4) drop-shadow(0 0 4px currentColor) !important;
+  animation: focusPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes focusPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
   }
 }
 
@@ -89,6 +112,57 @@
   stroke-width: 2;
   pointer-events: none;
   animation: pulseAnimation 1s ease-in-out infinite;
+}
+
+.highlightedPath {
+  fill: none;
+  stroke: $white;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.3;
+  pointer-events: none;
+  filter: brightness(1.2);
+}
+
+.penAddPreview {
+  stroke-width: 2;
+  pointer-events: none;
+  opacity: 0.5;
+
+  // Color coding to match the line
+  &[data-line-index='0'] {
+    fill: var(--color-red);
+    stroke: var(--color-red);
+  }
+
+  &[data-line-index='1'] {
+    fill: var(--color-cyan);
+    stroke: var(--color-cyan);
+  }
+
+  &[data-line-index='2'] {
+    fill: var(--color-yellow);
+    stroke: var(--color-yellow);
+  }
+}
+
+.penAddPreviewIcon {
+  fill: none;
+  stroke: $white;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.penRemoveIcon {
+  fill: none;
+  stroke: $white;
+  stroke-width: 2;
+  stroke-linecap: round;
+  pointer-events: none;
+  opacity: 0.9;
 }
 
 @keyframes pulseAnimation {
