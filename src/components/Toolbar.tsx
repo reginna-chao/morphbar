@@ -21,8 +21,9 @@ export default function Toolbar({ activeTool, onToolChange }: ToolbarProps) {
           key={id}
           className={`${styles.toolButton} ${activeTool === id ? styles.active : ''}`}
           onClick={() => onToolChange(id)}
-          title={label}
           aria-label={label}
+          data-tooltip-id="app-tooltip"
+          data-tooltip-content={label}
         >
           <Icon size={20} />
         </button>

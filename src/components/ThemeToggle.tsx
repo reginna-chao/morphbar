@@ -33,7 +33,8 @@ export default function ThemeToggle() {
       className={styles.themeToggle}
       onClick={toggleTheme}
       aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-      title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      data-tooltip-id="app-tooltip"
+      data-tooltip-content={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
     >
       {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
     </button>

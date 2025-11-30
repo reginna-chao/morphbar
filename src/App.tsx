@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { Tooltip } from 'react-tooltip';
 import EditorCanvas from '@/components/EditorCanvas';
 import ControlsSidebar from '@/components/ControlsSidebar';
 import CodePanel from '@/components/CodePanel';
@@ -106,8 +107,9 @@ function App() {
             target="_blank"
             rel="noopener noreferrer"
             className="github-link"
-            aria-label="View on GitHub"
-            title="View on GitHub"
+            aria-label="View source code on GitHub"
+            data-tooltip-id="app-tooltip"
+            data-tooltip-content="View source code on GitHub"
           >
             <svg height="24" viewBox="0 0 16 16" version="1.1" width="24" aria-hidden="true">
               <path
@@ -194,6 +196,8 @@ function App() {
           </a>
         </div>
       </footer>
+
+      <Tooltip id="app-tooltip" place="top" />
     </>
   );
 }

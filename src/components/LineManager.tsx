@@ -79,7 +79,9 @@ export default function LineManager({ lines, onLinesChange }: LineManagerProps) 
           onClick={handleAddLine}
           disabled={lines.length >= MAX_LINES}
           size="small"
-          title="Add new line"
+          aria-label="Add new line"
+          data-tooltip-id="app-tooltip"
+          data-tooltip-content="Add new line"
         >
           <Plus size={16} />
         </Button>
@@ -105,7 +107,9 @@ export default function LineManager({ lines, onLinesChange }: LineManagerProps) 
                     onClick={() => toggleSwapMenu(index)}
                     variant="ghost"
                     size="small"
-                    title="Switch line position"
+                    aria-label="Switch line position"
+                    data-tooltip-id="app-tooltip"
+                    data-tooltip-content="Switch line position"
                     disabled={lines.length <= 1}
                   >
                     <ArrowUpDown size={16} />
@@ -136,7 +140,9 @@ export default function LineManager({ lines, onLinesChange }: LineManagerProps) 
                   onClick={() => handleReverseLine(index)}
                   variant="ghost"
                   size="small"
-                  title="Reverse line direction"
+                  aria-label="Reverse line direction"
+                  data-tooltip-id="app-tooltip"
+                  data-tooltip-content="Reverse line direction"
                 >
                   <ArrowLeftRight size={16} />
                 </Button>
@@ -145,7 +151,11 @@ export default function LineManager({ lines, onLinesChange }: LineManagerProps) 
                   disabled={lines.length <= MIN_LINES}
                   variant="ghost"
                   size="small"
-                  title={lines.length <= MIN_LINES ? 'Cannot delete last line' : 'Delete line'}
+                  aria-label={lines.length <= MIN_LINES ? 'Cannot delete last line' : 'Delete line'}
+                  data-tooltip-id="app-tooltip"
+                  data-tooltip-content={
+                    lines.length <= MIN_LINES ? 'Cannot delete last line' : 'Delete line'
+                  }
                 >
                   <Trash2 size={16} />
                 </Button>
