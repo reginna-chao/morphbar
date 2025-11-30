@@ -96,7 +96,7 @@ h2 {
 // Layout
 main {
   display: grid;
-  grid-template-columns: 1fr 350px;
+  grid-template-columns: 1fr 400px;
   flex: 1;
   height: calc(100vh - 60px - 32px); // Header (60px) - Footer (32px)
 }

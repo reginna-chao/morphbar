@@ -96,7 +96,7 @@ export default function CodePanel({
         </div>
 
         <div className={styles.controlGroup}>
-          <h2>Size Settings</h2>
+          <h2>Render Size Settings</h2>
           <div className={styles.inputGroup}>
             <label htmlFor="width">Width (px)</label>
             <input

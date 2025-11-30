@@ -2,15 +2,10 @@
   background: #1a1a1a;
   border: 1px solid #333;
   border-radius: 12px;
-  padding: 2rem;
+  padding: 1rem 2rem;
   @include flex-center;
   min-height: 150px;
-  cursor: pointer;
   transition: background 0.3s;
-
-  &:hover {
-    background: #222;
-  }
 }
 
 // Styles for the generated preview SVG
