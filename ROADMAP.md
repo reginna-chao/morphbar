@@ -135,16 +135,100 @@ MorphBar 是一個漢堡選單圖示動畫生成器，允許使用者視覺化�
     - 自動檢測是否符合標準形狀
 - **需要決策**：選擇哪個方案？
 
-**3. 鏡射（水平/垂直）** ⭐⭐⭐
+**3. 鏡射管理系統（MirrorManager）** ⭐⭐⭐
 
-- **參數**：
-  - 鏡射軸：中間線（y=50）或指定線段
-  - 鏡射方向：水平 / 垂直
-  - 選擇目標線段
-- **數學公式**：
-  - 水平鏡射：`newY = axisY + (axisY - oldY)`
-  - 垂直鏡射：`newX = axisX + (axisX - oldX)`
-- **UI 設計挑戰**：選擇介面較複雜
+- **功能說明**：集中管理所有鏡射關係，支援即時同步鏡射（調整 Source 會自動更新 Target）
+- **方案選擇**：採用**方案二**（獨立的 MirrorManager 區塊）
+  - ✅ 集中管理所有鏡射關係，清晰可視
+  - ✅ 支援 1對多鏡射（一個 Source → 多個 Target）
+  - ✅ 支援多個獨立鏡射 Group 同時存在
+  - ✅ 未來可擴充「角度吸附」、「放射狀對稱」
+  - ✅ 符合專業繪圖軟體的操作邏輯（如 Clip Studio Paint）
+
+- **資料結構**：
+  ```typescript
+  interface MirrorGroup {
+    id: string;
+    direction: 'horizontal' | 'vertical';
+    sourceLine: number;        // 線段 index
+    targetLines: number[];     // 可以多個 target
+    
+    // 未來擴充預留
+    // type?: 'axis' | 'radial';
+    // axis?: { x: number; y: number; angle: number };
+    // angleSnap?: number;
+  }
+  
+  interface AppState {
+    lines: Lines;
+    mirrorGroups: MirrorGroup[];  // 新增
+  }
+  ```
+
+- **UI 結構**：
+  ```
+  ControlsSidebar
+  ├── LineManager (現有)
+  ├── MirrorManager (新增) ← 新區塊
+  │   ├── [+ Add Mirror Group] 按鈕
+  │   └── Mirror Groups 列表
+  │       ├── Group 1
+  │       │   ├── Direction: [水平 | 垂直]
+  │       │   ├── Source: Line 1
+  │       │   ├── Targets: Line 2, Line 3
+  │       │   └── [Remove Group] 按鈕
+  │       └── Group 2...
+  ```
+
+- **操作流程**：
+  1. 點擊「+ Add Mirror Group」
+  2. 選擇 Source Line（下拉選單）
+  3. 選擇 Direction（水平/垂直按鈕）
+  4. 選擇 Target Line(s)（多選）
+  5. 建立後在 MirrorManager 顯示
+  6. 拖曳 Source Line 的點時，自動更新所有 Target Lines
+
+- **視覺回饋**：
+  - LineManager 中顯示標籤：
+    - Source 線段：🔵 藍色「S」標籤
+    - Target 線段：🟢 綠色「T」標籤
+  - 未啟用鏡射的線段：無標籤
+
+- **鏡射邏輯**：
+  - 單向同步：調整 Source → 影響 Target，但調整 Target → 不影響 Source
+  - 鏡射軸：固定為畫布中心（水平軸 y=50，垂直軸 x=50）
+  - 數學公式：
+    - 水平鏡射：`newY = 100 - oldY`, `newX = oldX`
+    - 垂直鏡射：`newX = 100 - oldX`, `newY = oldY`
+
+- **未來擴充：角度吸附（Clip Studio Paint 風格）**
+  ```typescript
+  interface MirrorGroup {
+    // ... 現有欄位
+    type: 'axis' | 'radial';  // 新增類型
+    
+    // 當 type === 'radial' 時使用
+    radialConfig?: {
+      centerX: number;      // 放射中心
+      centerY: number;
+      divisions: number;    // 幾等分 (例如 4 = 90度一份)
+      angleSnap: number;    // 角度吸附 (例如 15度)
+    };
+  }
+  ```
+
+- **實作階段**：
+  - **Phase 1: 基礎架構**（本次實作）
+    - 建立 `MirrorManager.tsx` 元件
+    - 新增 `mirrorGroups` state 到 `App.tsx`
+    - 實作 Group 新增/刪除
+    - 實作即時鏡射邏輯（拖曳時觸發）
+  - **Phase 2: UI 優化**
+    - LineManager 加入 Source/Target 標籤
+    - 改善下拉選單/多選 UI
+  - **Phase 3: 未來擴充**
+    - 新增 `radial` 類型支援
+    - 實作角度吸附
 
 **6. 動畫水平位移效果** ⭐⭐⭐
 
