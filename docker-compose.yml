@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  morphbar:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: morphbar
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    networks:
+      - morphbar-network
+
+networks:
+  morphbar-network:
+    driver: bridge

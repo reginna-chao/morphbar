@@ -1,0 +1,17 @@
+node_modules
+npm-debug.log
+dist
+.git
+.gitignore
+.github
+.vscode
+.claude
+*.md
+!README.md
+.prettierignore
+.prettierrc
+eslint.config.js
+tsconfig.json
+tsconfig.node.json
+project-archive
+images
