@@ -4,7 +4,7 @@ import Button from './ui/Button';
 import Toolbar from './Toolbar';
 import { getLineColor } from '@/utils/colors';
 import { toastOptions } from '@/config/toast';
-import type { Mode, LineState, DraggedPoint, Tool, PathPoint } from '../types';
+import type { Mode, LineState, DraggedPoint, Tool, PathPoint, LineIndex } from '../types';
 import styles from './EditorCanvas.module.scss';
 import { RotateCw } from 'lucide-react';
 
@@ -45,9 +45,16 @@ interface EditorCanvasProps {
   lines: LineState[];
   onLinesChange: (lines: LineState[]) => void;
   onReset: () => void;
+  mirrorTargetMap?: Map<LineIndex, LineIndex>;
 }
 
-export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: EditorCanvasProps) {
+export default function EditorCanvas({
+  mode,
+  lines,
+  onLinesChange,
+  onReset,
+  mirrorTargetMap = new Map(),
+}: EditorCanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const activeLayerRef = useRef<SVGGElement>(null);
   const ghostLayerRef = useRef<SVGGElement>(null);
@@ -103,6 +110,8 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
     lines.forEach((line, index) => {
       const activePoints = line[mode];
       const ghostPoints = line[mode === 'menu' ? 'close' : 'menu'];
+      const isMirrorTarget = mirrorTargetMap.has(index);
+      const sourceLineIndex = mirrorTargetMap.get(index);
 
       // Draw Ghost Path (Reference)
       const ghostPathD = generatePathD(ghostPoints);
@@ -119,9 +128,18 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
       if (activePathD) {
         const activePath = document.createElementNS(SVG_NS, 'path');
         activePath.setAttribute('d', activePathD);
-        activePath.classList.add(styles.editorPath);
         activePath.dataset.lineIndex = index.toString();
-        activePath.setAttribute('stroke', lineColor);
+
+        if (isMirrorTarget && sourceLineIndex !== undefined) {
+          // Mirror target: dashed path with source line color, reduced opacity
+          const sourceColor = getLineColor(sourceLineIndex, lines[sourceLineIndex]?.color);
+          activePath.classList.add(styles.editorPath);
+          activePath.classList.add(styles.mirrorTargetPath);
+          activePath.setAttribute('stroke', sourceColor);
+        } else {
+          activePath.classList.add(styles.editorPath);
+          activePath.setAttribute('stroke', lineColor);
+        }
         activeLayer.appendChild(activePath);
       }
 
@@ -132,24 +150,35 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
           circle.setAttribute('cx', point.x.toString());
           circle.setAttribute('cy', point.y.toString());
           circle.setAttribute('r', '6');
-          circle.classList.add(styles.controlPoint);
-          circle.setAttribute('fill', lineColor);
-
-          // Add focused class if this point is focused
-          if (
-            focusedPoint &&
-            focusedPoint.lineIndex === index &&
-            focusedPoint.pointIndex === pointIndex
-          ) {
-            circle.classList.add(styles.focusedPoint);
-          }
-
           circle.dataset.lineIndex = index.toString();
           circle.dataset.pointIndex = pointIndex.toString();
+
+          if (isMirrorTarget && sourceLineIndex !== undefined) {
+            // Mirror target: disabled control point with source color dashed border
+            const sourceColor = getLineColor(sourceLineIndex, lines[sourceLineIndex]?.color);
+            circle.classList.add(styles.controlPoint);
+            circle.classList.add(styles.mirrorTargetPoint);
+            circle.setAttribute('fill', 'transparent');
+            circle.setAttribute('stroke', sourceColor);
+          } else {
+            circle.classList.add(styles.controlPoint);
+            circle.setAttribute('fill', lineColor);
+
+            // Add focused class if this point is focused
+            if (
+              focusedPoint &&
+              focusedPoint.lineIndex === index &&
+              focusedPoint.pointIndex === pointIndex
+            ) {
+              circle.classList.add(styles.focusedPoint);
+            }
+          }
+
           controlsLayer.appendChild(circle);
 
-          // Add minus icon for Pen- mode on hover
+          // Add minus icon for Pen- mode on hover (not for mirror targets)
           if (
+            !isMirrorTarget &&
             activeTool === 'pen-remove' &&
             hoveredPoint &&
             hoveredPoint.lineIndex === index &&
@@ -263,7 +292,7 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
       plusIcon.classList.add(styles.penAddPreviewIcon);
       connectionLayer.appendChild(plusIcon);
     }
-  }, [lines, mode, hoveredPoint, penAddPreview, activeTool, focusedPoint]);
+  }, [lines, mode, hoveredPoint, penAddPreview, activeTool, focusedPoint, mirrorTargetMap]);
 
   const getSVGPoint = (event: MouseEvent): DOMPoint => {
     const svg = svgRef.current;
@@ -298,6 +327,7 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
       const pointIndex = parseInt(target.getAttribute('data-point-index') || '0');
 
       if (lineIndex >= lines.length) return;
+      if (mirrorTargetMap.has(lineIndex)) return;
 
       const newLines = JSON.parse(JSON.stringify(lines)) as LineState[];
       const anchors = newLines[lineIndex][mode].filter((p) => p.type === 'anchor');
@@ -324,6 +354,7 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
         );
 
         if (lineIndex >= lines.length) return;
+        if (mirrorTargetMap.has(lineIndex)) return;
 
         const pt = getSVGPoint(e.nativeEvent as unknown as MouseEvent);
 
@@ -415,6 +446,7 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
       const pointIndex = parseInt(target.getAttribute('data-point-index') || '0');
 
       if (lineIndex >= lines.length) return;
+      if (mirrorTargetMap.has(lineIndex)) return;
 
       const currentPoint = lines[lineIndex][mode][pointIndex];
 

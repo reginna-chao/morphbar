@@ -53,5 +53,14 @@ export interface DraggedPoint {
   originY: number;
 }
 
+export type LineIndex = number;
+
+export interface MirrorGroup {
+  id: string;
+  direction: 'horizontal' | 'vertical';
+  sourceLine: LineIndex;
+  targetLines: LineIndex[];
+}
+
 // Tool types
 export type Tool = 'select' | 'pen-add' | 'pen-remove';

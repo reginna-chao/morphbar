@@ -1,6 +1,7 @@
 import SegmentedControl from './ui/SegmentedControl';
 import LineManager from './LineManager';
-import type { Mode, Lines } from '../types';
+import MirrorManager from './MirrorManager';
+import type { Mode, Lines, MirrorGroup } from '@/types';
 import styles from './ControlsSidebar.module.scss';
 import { Menu, X } from 'lucide-react';
 
@@ -9,6 +10,8 @@ interface ControlsSidebarProps {
   onModeChange: (mode: Mode) => void;
   lines: Lines;
   onLinesChange: (lines: Lines) => void;
+  mirrorGroups: MirrorGroup[];
+  onMirrorGroupsChange: (groups: MirrorGroup[]) => void;
 }
 
 export default function ControlsSidebar({
@@ -16,11 +19,21 @@ export default function ControlsSidebar({
   onModeChange,
   lines,
   onLinesChange,
+  mirrorGroups,
+  onMirrorGroupsChange,
 }: ControlsSidebarProps) {
   return (
     <aside className={styles.controlsSidebar}>
       <div className={styles.controlGroup}>
         <LineManager lines={lines} onLinesChange={onLinesChange} />
+      </div>
+
+      <div className={styles.controlGroup}>
+        <MirrorManager
+          lines={lines}
+          mirrorGroups={mirrorGroups}
+          onMirrorGroupsChange={onMirrorGroupsChange}
+        />
       </div>
 
       <div className={styles.controlGroup}>
