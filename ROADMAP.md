@@ -112,11 +112,11 @@ MorphBar 是一個漢堡選單圖示動畫生成器，允許使用者視覺化�
 
 | 編號 | 功能                         | 難度         | 優先級 | 狀態      |
 | ---- | ---------------------------- | ------------ | ------ | --------- |
-| 3    | 鏡射（水平/垂直）            | ⭐⭐⭐       | Medium | 📝 待開發 |
-| 6    | Menu/Close 水平移動距離      | ⭐⭐⭐       | Low    | 📝 待開發 |
+| 3    | 鏡射（水平/垂直）            | ⭐⭐⭐       | Medium | ✅ 完成 |
+| 6    | Menu/Close 水平移動距離      | ⭐⭐⭐       | Low    | ✅ 完成 |
 | 2    | 快速調整 Hamburger 間距      | ⭐⭐⭐       | Low    | 🤔 需討論 |
 | 13   | Preview 區塊（不同顏色預覽） | ⭐⭐⭐⭐     | Medium | 📝 待開發 |
-| 5    | 對齊輔助線                   | ⭐⭐⭐⭐⭐   | High   | 📝 待開發 |
+| 5    | 對齊輔助線                   | ⭐⭐⭐⭐⭐   | High   | ✅ 完成 |
 | 11   | Style Panel（樣式設定）      | ⭐⭐⭐⭐⭐   | High   | 📝 待開發 |
 | 7    | 框選複數點移動               | ⭐⭐⭐⭐⭐⭐ | Medium | 📝 待開發 |
 
@@ -146,26 +146,28 @@ MorphBar 是一個漢堡選單圖示動畫生成器，允許使用者視覺化�
   - ✅ 符合專業繪圖軟體的操作邏輯（如 Clip Studio Paint）
 
 - **資料結構**：
+
   ```typescript
   interface MirrorGroup {
     id: string;
     direction: 'horizontal' | 'vertical';
-    sourceLine: number;        // 線段 index
-    targetLines: number[];     // 可以多個 target
-    
+    sourceLine: number; // 線段 index
+    targetLines: number[]; // 可以多個 target
+
     // 未來擴充預留
     // type?: 'axis' | 'radial';
     // axis?: { x: number; y: number; angle: number };
     // angleSnap?: number;
   }
-  
+
   interface AppState {
     lines: Lines;
-    mirrorGroups: MirrorGroup[];  // 新增
+    mirrorGroups: MirrorGroup[]; // 新增
   }
   ```
 
 - **UI 結構**：
+
   ```
   ControlsSidebar
   ├── LineManager (現有)
@@ -202,17 +204,18 @@ MorphBar 是一個漢堡選單圖示動畫生成器，允許使用者視覺化�
     - 垂直鏡射：`newX = 100 - oldX`, `newY = oldY`
 
 - **未來擴充：角度吸附（Clip Studio Paint 風格）**
+
   ```typescript
   interface MirrorGroup {
     // ... 現有欄位
-    type: 'axis' | 'radial';  // 新增類型
-    
+    type: 'axis' | 'radial'; // 新增類型
+
     // 當 type === 'radial' 時使用
     radialConfig?: {
-      centerX: number;      // 放射中心
+      centerX: number; // 放射中心
       centerY: number;
-      divisions: number;    // 幾等分 (例如 4 = 90度一份)
-      angleSnap: number;    // 角度吸附 (例如 15度)
+      divisions: number; // 幾等分 (例如 4 = 90度一份)
+      angleSnap: number; // 角度吸附 (例如 15度)
     };
   }
   ```
@@ -395,9 +398,9 @@ MorphBar 是一個漢堡選單圖示動畫生成器，允許使用者視覺化�
 
 **目標**：提升編輯器易用性
 
-- [ ] 功能 #5：對齊輔助線
-- [ ] 功能 #3：鏡射功能
-- [ ] 功能 #6：水平移動距離調整
+- [x] 功能 #5：對齊輔助線
+- [x] 功能 #3：鏡射功能
+- [x] 功能 #6：水平移動距離調整
 
 **預估時間**：2-3 天
 **風險**：中等（效能優化需注意）

@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useCallback } from 'react';
 import Button from './ui/Button';
 import SegmentedControl from './ui/SegmentedControl';
 import type { GeneratedCode, Method, ClassNameConfig, SizeConfig } from '../types';
@@ -25,6 +25,16 @@ export default function CodePanel({
   onSizeConfigChange,
 }: CodePanelProps) {
   const codeDisplayRef = useRef<HTMLElement>(null);
+
+  const handleHorizontalShiftChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = parseInt(e.target.value);
+      if (!isNaN(val)) {
+        onSizeConfigChange({ ...sizeConfig, horizontalShift: val });
+      }
+    },
+    [sizeConfig, onSizeConfigChange]
+  );
 
   const handleCopy = () => {
     const codeDisplay = codeDisplayRef.current;
@@ -111,6 +121,34 @@ export default function CodePanel({
               className={styles.input}
               placeholder="50"
             />
+          </div>
+        </div>
+
+        <div className={styles.controlGroup}>
+          <h2>Animation Settings</h2>
+          <div className={styles.inputGroup}>
+            <label htmlFor="horizontalShift">Horizontal Shift</label>
+            <div className={styles.sliderGroup}>
+              <input
+                id="horizontalShift"
+                type="range"
+                min="-200"
+                max="200"
+                step="1"
+                value={sizeConfig.horizontalShift}
+                onChange={handleHorizontalShiftChange}
+                className={styles.slider}
+              />
+              <input
+                type="number"
+                min="-200"
+                max="200"
+                value={sizeConfig.horizontalShift}
+                onChange={handleHorizontalShiftChange}
+                aria-label="Horizontal shift value"
+                className={styles.numberInput}
+              />
+            </div>
           </div>
         </div>
 

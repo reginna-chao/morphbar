@@ -8,6 +8,7 @@ import CodePanel from '@/components/CodePanel';
 import SegmentedControl from '@/components/ui/SegmentedControl';
 import ThemeToggle from '@/components/ThemeToggle';
 import { generateCode } from '@/utils/generator';
+import { adjustMirrorGroups, applyMirrorSync } from '@/utils/mirror';
 import { toastContainerConfig, toastOptions } from '@/config/toast';
 import type {
   Mode,
@@ -16,7 +17,6 @@ import type {
   Lines,
   ClassNameConfig,
   SizeConfig,
-  PathPoint,
   MirrorGroup,
   LineIndex,
 } from '@/types';
@@ -25,49 +25,6 @@ import logoLight from '@/assets/images/logomark-light.svg';
 import logoDark from '@/assets/images/logomark-dark.svg';
 import { Code, SplinePointer } from 'lucide-react';
 import Preview from '@/components/Preview';
-
-const SVG_VIEWBOX_SIZE = 100;
-
-function applyMirror(sourcePoints: PathPoint[], direction: 'horizontal' | 'vertical'): PathPoint[] {
-  return sourcePoints.map((p) => ({
-    ...p,
-    x: direction === 'vertical' ? SVG_VIEWBOX_SIZE - p.x : p.x,
-    y: direction === 'horizontal' ? SVG_VIEWBOX_SIZE - p.y : p.y,
-  }));
-}
-
-function adjustMirrorGroups(groups: MirrorGroup[], removedIndex: number): MirrorGroup[] {
-  return groups
-    .filter((g) => g.sourceLine !== removedIndex)
-    .map((g) => ({
-      ...g,
-      sourceLine: g.sourceLine > removedIndex ? g.sourceLine - 1 : g.sourceLine,
-      targetLines: g.targetLines
-        .filter((t) => t !== removedIndex)
-        .map((t) => (t > removedIndex ? t - 1 : t)),
-    }))
-    .filter((g) => g.targetLines.length > 0);
-}
-
-function applyMirrorSync(lines: LineState[], groups: MirrorGroup[]): LineState[] {
-  if (groups.length === 0) return lines;
-
-  const result: LineState[] = structuredClone(lines);
-
-  for (const group of groups) {
-    const { sourceLine, targetLines, direction } = group;
-    if (sourceLine >= result.length) continue;
-
-    for (const targetIndex of targetLines) {
-      if (targetIndex >= result.length) continue;
-      if (targetIndex === sourceLine) continue;
-      result[targetIndex].menu = applyMirror(result[sourceLine].menu, direction);
-      result[targetIndex].close = applyMirror(result[sourceLine].close, direction);
-    }
-  }
-
-  return result;
-}
 
 // Initial State (Standard Hamburger -> Cross)
 const INITIAL_LINES: Lines = [
@@ -117,6 +74,7 @@ function App() {
   const [sizeConfig, setSizeConfig] = useState<SizeConfig>({
     width: 50,
     strokeWidth: 3,
+    horizontalShift: 0,
   });
   const [mirrorGroups, setMirrorGroups] = useState<MirrorGroup[]>([]);
 

@@ -44,6 +44,7 @@ export interface ClassNameConfig {
 export interface SizeConfig {
   width: number; // in pixels
   strokeWidth: number; // SVG stroke width
+  horizontalShift: number; // viewBox units, -200 to 200, default 0
 }
 
 export interface DraggedPoint {
