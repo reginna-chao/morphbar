@@ -1,23 +1,17 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import Button from './ui/Button';
 import Toolbar from './Toolbar';
+import GuidesLayer from './GuidesLayer';
 import { getLineColor } from '@/utils/colors';
 import { toastOptions } from '@/config/toast';
-import type {
-  Mode,
-  LineState,
-  DraggedPoint,
-  Tool,
-  PathPoint,
-  LineIndex,
-  AlignmentGuide,
-} from '../types';
+import { useAlignmentGuides } from '@/hooks/useAlignmentGuides';
+import type { Mode, LineState, DraggedPoint, Tool, PathPoint, LineIndex } from '@/types';
 import styles from './EditorCanvas.module.scss';
 import { RotateCw } from 'lucide-react';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const GUIDE_TOLERANCE = 2.5;
+const EMPTY_MAP = new Map<LineIndex, LineIndex>();
 
 // Calculate shortest distance from point to line segment
 function pointToSegmentDistance(
@@ -62,7 +56,7 @@ export default function EditorCanvas({
   lines,
   onLinesChange,
   onReset,
-  mirrorTargetMap = new Map(),
+  mirrorTargetMap = EMPTY_MAP,
 }: EditorCanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const activeLayerRef = useRef<SVGGElement>(null);
@@ -86,23 +80,11 @@ export default function EditorCanvas({
     pointIndex: number;
   } | null>(null);
   const [showCrosshairCursor, setShowCrosshairCursor] = useState(false);
-  const [activeGuides, setActiveGuides] = useState<AlignmentGuide[]>([]);
-
-  // Collect all alignment target points (excluding the currently dragged point)
-  const alignmentTargets = useMemo(() => {
-    if (!draggedPoint) return [];
-    const targets: { x: number; y: number }[] = [];
-    lines.forEach((line, lineIndex) => {
-      const points = line[mode];
-      points.forEach((point, pointIndex) => {
-        if (point.type !== 'anchor') return;
-        // Exclude the point being dragged
-        if (lineIndex === draggedPoint.lineIndex && pointIndex === draggedPoint.pointIndex) return;
-        targets.push({ x: point.x, y: point.y });
-      });
-    });
-    return targets;
-  }, [lines, mode, draggedPoint]);
+  const { activeGuides, setActiveGuides, computeSnap, clearGuides } = useAlignmentGuides(
+    lines,
+    mode,
+    draggedPoint
+  );
 
   // Render paths and controls
   useEffect(() => {
@@ -116,10 +98,10 @@ export default function EditorCanvas({
     if (!activeLayer || !ghostLayer || !controlsLayer || !connectionLayer) return;
 
     // Clear layers
-    activeLayer.innerHTML = '';
-    ghostLayer.innerHTML = '';
-    controlsLayer.innerHTML = '';
-    connectionLayer.innerHTML = '';
+    while (activeLayer.firstChild) activeLayer.removeChild(activeLayer.firstChild);
+    while (ghostLayer.firstChild) ghostLayer.removeChild(ghostLayer.firstChild);
+    while (controlsLayer.firstChild) controlsLayer.removeChild(controlsLayer.firstChild);
+    while (connectionLayer.firstChild) connectionLayer.removeChild(connectionLayer.firstChild);
 
     // Generate path string (connect anchor points only)
     const generatePathD = (points: PathPoint[]) => {
@@ -590,61 +572,32 @@ export default function EditorCanvas({
         }
       }
 
-      // Alignment guide detection
-      const guides: AlignmentGuide[] = [];
-      let snappedX = false;
-      let snappedY = false;
+      // Alignment guide detection via hook
+      const snap = computeSnap(x, y, lockedAxis);
+      x = snap.x;
+      y = snap.y;
+      setActiveGuides(snap.guides);
 
-      // Check center alignment (x=50, y=50)
-      if (lockedAxis !== 'x' && Math.abs(x - 50) <= GUIDE_TOLERANCE) {
-        x = 50;
-        snappedX = true;
-        guides.push({ axis: 'vertical', position: 50, isCenter: true });
-      }
-      if (lockedAxis !== 'y' && Math.abs(y - 50) <= GUIDE_TOLERANCE) {
-        y = 50;
-        snappedY = true;
-        guides.push({ axis: 'horizontal', position: 50, isCenter: true });
-      }
-
-      // Check alignment with other points
-      for (const target of alignmentTargets) {
-        if (!snappedX && lockedAxis !== 'x' && Math.abs(x - target.x) <= GUIDE_TOLERANCE) {
-          x = target.x;
-          snappedX = true;
-          guides.push({ axis: 'vertical', position: target.x, isCenter: false });
-        }
-        if (!snappedY && lockedAxis !== 'y' && Math.abs(y - target.y) <= GUIDE_TOLERANCE) {
-          y = target.y;
-          snappedY = true;
-          guides.push({ axis: 'horizontal', position: target.y, isCenter: false });
-        }
-        if (snappedX && snappedY) break;
-      }
-
-      // Fall back to grid snap for axes not snapped by guides
-      if (!snappedX) x = Math.round(x / 5) * 5;
-      if (!snappedY) y = Math.round(y / 5) * 5;
-
-      setActiveGuides(guides);
-
-      // Update State
-      const newLines = JSON.parse(JSON.stringify(lines)) as LineState[];
-      const currentPoint = newLines[draggedPoint.lineIndex][mode][draggedPoint.pointIndex];
-      newLines[draggedPoint.lineIndex][mode][draggedPoint.pointIndex] = {
-        ...currentPoint,
-        x,
-        y,
-      };
+      // Update State with shallow immutable update (Fix #2)
+      const newLines = lines.map((line, i) =>
+        i === draggedPoint.lineIndex
+          ? {
+              ...line,
+              [mode]: line[mode].map((p, j) =>
+                j === draggedPoint.pointIndex ? { ...p, x, y } : p
+              ),
+            }
+          : line
+      );
       onLinesChange(newLines);
     },
-    [draggedPoint, lines, mode, onLinesChange, alignmentTargets]
+    [draggedPoint, lines, mode, onLinesChange, computeSnap, setActiveGuides]
   );
 
   const handleMouseUp = useCallback(() => {
     setDraggedPoint(null);
-    setActiveGuides([]);
-  }, []);
+    clearGuides();
+  }, [clearGuides]);
 
   useEffect(() => {
     if (!draggedPoint) return;
@@ -694,32 +647,7 @@ export default function EditorCanvas({
         <g ref={connectionLayerRef} id="connection-layer"></g>
 
         {/* Alignment guides (visible during drag) */}
-        {activeGuides.length > 0 && (
-          <g id="guides-layer">
-            {activeGuides.map((guide, i) => {
-              const className = guide.isCenter ? styles.guideLineCenter : styles.guideLine;
-              return guide.axis === 'horizontal' ? (
-                <line
-                  key={`guide-${i}`}
-                  x1={0}
-                  y1={guide.position}
-                  x2={100}
-                  y2={guide.position}
-                  className={className}
-                />
-              ) : (
-                <line
-                  key={`guide-${i}`}
-                  x1={guide.position}
-                  y1={0}
-                  x2={guide.position}
-                  y2={100}
-                  className={className}
-                />
-              );
-            })}
-          </g>
-        )}
+        <GuidesLayer guides={activeGuides} />
 
         {/* Control points */}
         <g ref={controlsLayerRef} id="controls-layer"></g>
