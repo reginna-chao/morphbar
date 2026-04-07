@@ -154,6 +154,20 @@
   }
 }
 
+.guideLine {
+  stroke: var(--guide-color);
+  stroke-width: 0.5;
+  stroke-dasharray: 2, 2;
+  pointer-events: none;
+}
+
+.guideLineCenter {
+  stroke: var(--guide-center-color);
+  stroke-width: 0.5;
+  stroke-dasharray: 3, 2;
+  pointer-events: none;
+}
+
 .btnReset {
   position: absolute;
   top: 20px;

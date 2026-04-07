@@ -16,6 +16,8 @@
   --editor-grid-color: rgba(255, 255, 255, 0.05);
   --editor-bg: rgba(255, 255, 255, 0.05);
   --ghost-path-color: rgba(255, 255, 255, 0.1);
+  --guide-color: rgba(255, 255, 255, 0.4);
+  --guide-center-color: rgba(238, 70, 64, 0.6);
 }
 
 // Light Theme
@@ -34,6 +36,8 @@
   --editor-grid-color: rgba(0, 0, 0, 0.05);
   --editor-bg: rgba(0, 0, 0, 0.02);
   --ghost-path-color: rgba(0, 0, 0, 0.1);
+  --guide-color: rgba(0, 0, 0, 0.3);
+  --guide-center-color: rgba(238, 70, 64, 0.5);
 }
 
 // Global styles

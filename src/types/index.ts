@@ -62,5 +62,12 @@ export interface MirrorGroup {
   targetLines: LineIndex[];
 }
 
+// Alignment guide shown during drag
+export interface AlignmentGuide {
+  axis: 'horizontal' | 'vertical';
+  position: number;
+  isCenter: boolean;
+}
+
 // Tool types
 export type Tool = 'select' | 'pen-add' | 'pen-remove';
