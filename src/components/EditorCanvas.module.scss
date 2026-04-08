@@ -114,6 +114,25 @@
   opacity: 0.8;
 }
 
+.mirrorTargetPath {
+  opacity: 0.4;
+  stroke-dasharray: 4, 3;
+  pointer-events: none;
+}
+
+.mirrorTargetPoint {
+  opacity: 0.4;
+  stroke-width: 2;
+  stroke-dasharray: 3, 2;
+  cursor: not-allowed;
+  pointer-events: none;
+
+  &:hover {
+    r: 6;
+    filter: none;
+  }
+}
+
 .penRemoveIcon {
   fill: none;
   stroke: $white;

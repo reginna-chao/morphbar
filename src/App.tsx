@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Tooltip } from 'react-tooltip';
@@ -8,13 +8,23 @@ import CodePanel from '@/components/CodePanel';
 import SegmentedControl from '@/components/ui/SegmentedControl';
 import ThemeToggle from '@/components/ThemeToggle';
 import { generateCode } from '@/utils/generator';
+import { adjustMirrorGroups, applyMirrorSync } from '@/utils/mirror';
 import { toastContainerConfig, toastOptions } from '@/config/toast';
-import type { Mode, Method, LineState, Lines, ClassNameConfig, SizeConfig } from './types';
+import type {
+  Mode,
+  Method,
+  LineState,
+  Lines,
+  ClassNameConfig,
+  SizeConfig,
+  MirrorGroup,
+  LineIndex,
+} from '@/types';
 import '@/styles/global.scss';
 import logoLight from '@/assets/images/logomark-light.svg';
 import logoDark from '@/assets/images/logomark-dark.svg';
 import { Code, SplinePointer } from 'lucide-react';
-import Preview from './components/Preview';
+import Preview from '@/components/Preview';
 
 // Initial State (Standard Hamburger -> Cross)
 const INITIAL_LINES: Lines = [
@@ -55,7 +65,7 @@ type PanelType = 'design' | 'code';
 function App() {
   const [mode, setMode] = useState<Mode>('menu');
   const [method, setMethod] = useState<Method>('checkbox');
-  const [lines, setLines] = useState<LineState[]>(JSON.parse(JSON.stringify(INITIAL_LINES)));
+  const [lines, setLines] = useState<LineState[]>(structuredClone(INITIAL_LINES));
   const [activePanel, setActivePanel] = useState<PanelType>('design');
   const [classNameConfig, setClassNameConfig] = useState<ClassNameConfig>({
     baseClass: 'hamburger-menu',
@@ -64,12 +74,67 @@ function App() {
   const [sizeConfig, setSizeConfig] = useState<SizeConfig>({
     width: 50,
     strokeWidth: 3,
+    horizontalShift: 0,
   });
+  const [mirrorGroups, setMirrorGroups] = useState<MirrorGroup[]>([]);
+
+  const handleLinesChange = useCallback(
+    (newLines: Lines) => {
+      const oldLength = lines.length;
+      const newLength = newLines.length;
+
+      let updatedGroups = mirrorGroups;
+
+      if (newLength < oldLength) {
+        if (oldLength - newLength === 1) {
+          // Detect which index was removed by comparing line data
+          let removedIndex = -1;
+          for (let i = 0; i < oldLength; i++) {
+            const before = JSON.stringify(lines[i]);
+            const after = i < newLength ? JSON.stringify(newLines[i]) : null;
+            if (after !== before) {
+              removedIndex = i;
+              break;
+            }
+          }
+          // Edge case: last line was removed
+          if (removedIndex === -1) removedIndex = oldLength - 1;
+          updatedGroups = adjustMirrorGroups(mirrorGroups, removedIndex);
+        } else {
+          // Multiple lines removed (e.g., reset) — clear all groups
+          updatedGroups = [];
+        }
+        setMirrorGroups(updatedGroups);
+      }
+
+      const synced = applyMirrorSync(newLines, updatedGroups);
+      setLines(synced);
+    },
+    [lines, mirrorGroups]
+  );
+
+  const handleMirrorGroupsChange = useCallback((groups: MirrorGroup[]) => {
+    setMirrorGroups(groups);
+    // Apply mirror sync immediately with the new groups using functional update
+    setLines((currentLines) => applyMirrorSync(currentLines, groups));
+  }, []);
 
   const handleReset = () => {
-    setLines(JSON.parse(JSON.stringify(INITIAL_LINES)));
+    setLines(structuredClone(INITIAL_LINES));
+    setMirrorGroups([]);
     toast.success('Reset successful', toastOptions.success);
   };
+
+  // Map of target line index → source line index (for disabling targets on canvas)
+  const mirrorTargetMap = useMemo(() => {
+    const map = new Map<LineIndex, LineIndex>();
+    for (const group of mirrorGroups) {
+      for (const target of group.targetLines) {
+        map.set(target, group.sourceLine);
+      }
+    }
+    return map;
+  }, [mirrorGroups]);
 
   const generatedCode = generateCode(lines, method, classNameConfig, sizeConfig);
 
@@ -123,7 +188,13 @@ function App() {
 
       <main>
         <div style={{ position: 'relative', height: '100%' }}>
-          <EditorCanvas mode={mode} lines={lines} onLinesChange={setLines} onReset={handleReset} />
+          <EditorCanvas
+            mode={mode}
+            lines={lines}
+            onLinesChange={handleLinesChange}
+            onReset={handleReset}
+            mirrorTargetMap={mirrorTargetMap}
+          />
 
           <div
             style={{
@@ -168,7 +239,9 @@ function App() {
             mode={mode}
             onModeChange={setMode}
             lines={lines}
-            onLinesChange={setLines}
+            onLinesChange={handleLinesChange}
+            mirrorGroups={mirrorGroups}
+            onMirrorGroupsChange={handleMirrorGroupsChange}
           />
         ) : (
           <CodePanel

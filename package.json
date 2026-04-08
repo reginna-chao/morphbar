@@ -1,7 +1,7 @@
 {
   "name": "morphbar",
   "description": "MorphBar - Dynamic morphing menu icon generator",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "author": "Reginna Chao",
   "license": "MIT",
   "type": "module",
@@ -13,7 +13,7 @@
     "lint:fix": "eslint . --ext ts,tsx --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,scss,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,scss,css}\"",
-    "type-check": "tsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

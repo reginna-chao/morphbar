@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.0] - 2026-04-08
+
+### Added
+
+- **Alignment Guides** (#5)
+  - Horizontal/vertical guide lines during point drag
+  - Snap-to-guide with configurable tolerance
+  - Center alignment guides (x=50, y=50)
+  - Cross-point alignment detection
+
+- **Mirror System** (#3)
+  - MirrorManager UI for creating mirror groups
+  - Horizontal/vertical mirroring with real-time sync
+  - Source→Target one-way synchronization
+  - Target lines disabled on canvas to prevent conflicting edits
+  - Visual Source/Target badges in LineManager
+
+- **Horizontal Shift Animation** (#6)
+  - Configurable horizontal offset for menu↔close transition
+  - SVG `<g>` wrapper with CSS `translateX` animation
+  - Range slider + number input in Code Panel (-200 to 200)
+  - Conditional code generation (clean output when shift is 0)
+
+### Changed
+
+- **Code Panel layout** — Code output now uses flex layout with min-height for better visibility on small screens
+- **Module extraction** — Refactored mirror helpers into `utils/mirror.ts` and path calculation into `utils/pathCalculation.ts` to reduce file length
+
+---
+
 ## [1.2.0] - 2025-11-30
 
 ### Added

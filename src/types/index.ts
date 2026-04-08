@@ -44,6 +44,7 @@ export interface ClassNameConfig {
 export interface SizeConfig {
   width: number; // in pixels
   strokeWidth: number; // SVG stroke width
+  horizontalShift: number; // viewBox units, -200 to 200, default 0
 }
 
 export interface DraggedPoint {
@@ -51,6 +52,22 @@ export interface DraggedPoint {
   pointIndex: number;
   originX: number;
   originY: number;
+}
+
+export type LineIndex = number;
+
+export interface MirrorGroup {
+  id: string;
+  direction: 'horizontal' | 'vertical';
+  sourceLine: LineIndex;
+  targetLines: LineIndex[];
+}
+
+// Alignment guide shown during drag
+export interface AlignmentGuide {
+  axis: 'horizontal' | 'vertical';
+  position: number;
+  isCenter: boolean;
 }
 
 // Tool types

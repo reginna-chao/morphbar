@@ -27,6 +27,8 @@
   gap: 2rem;
 
   .codeOutput {
+    flex: 1;
+    min-height: 200px;
     background: var(--input-bg);
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -34,7 +36,7 @@
     font-family: 'Fira Code', monospace;
     font-size: 0.85rem;
     color: var(--text-secondary);
-    overflow-x: auto;
+    overflow: auto;
     white-space: pre;
     position: relative;
     line-height: 1.6;
@@ -56,6 +58,56 @@
     font-size: 0.85rem;
     color: var(--text-secondary);
     font-weight: 500;
+  }
+}
+
+.sliderGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.slider {
+  flex: 1;
+  height: 4px;
+  appearance: none;
+  background: var(--border-color);
+  border-radius: 2px;
+  outline: none;
+
+  &::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    cursor: pointer;
+  }
+
+  &::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    cursor: pointer;
+    border: none;
+  }
+}
+
+.numberInput {
+  width: 64px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: var(--text-color);
+  font-size: 0.85rem;
+  font-family: 'Fira Code', monospace;
+  text-align: center;
+
+  &:focus {
+    outline: none;
+    border-color: var(--primary-color);
   }
 }
 

@@ -1,0 +1,16 @@
+%guide-base {
+  stroke-width: 0.5;
+  pointer-events: none;
+}
+
+.guideLine {
+  @extend %guide-base;
+  stroke: var(--guide-color);
+  stroke-dasharray: 2, 2;
+}
+
+.guideLineCenter {
+  @extend %guide-base;
+  stroke: var(--guide-center-color);
+  stroke-dasharray: 3, 2;
+}

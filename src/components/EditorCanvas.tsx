@@ -2,13 +2,16 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import Button from './ui/Button';
 import Toolbar from './Toolbar';
+import GuidesLayer from './GuidesLayer';
 import { getLineColor } from '@/utils/colors';
 import { toastOptions } from '@/config/toast';
-import type { Mode, LineState, DraggedPoint, Tool, PathPoint } from '../types';
+import { useAlignmentGuides } from '@/hooks/useAlignmentGuides';
+import type { Mode, LineState, DraggedPoint, Tool, PathPoint, LineIndex } from '@/types';
 import styles from './EditorCanvas.module.scss';
 import { RotateCw } from 'lucide-react';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+const EMPTY_MAP = new Map<LineIndex, LineIndex>();
 
 // Calculate shortest distance from point to line segment
 function pointToSegmentDistance(
@@ -45,9 +48,16 @@ interface EditorCanvasProps {
   lines: LineState[];
   onLinesChange: (lines: LineState[]) => void;
   onReset: () => void;
+  mirrorTargetMap?: Map<LineIndex, LineIndex>;
 }
 
-export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: EditorCanvasProps) {
+export default function EditorCanvas({
+  mode,
+  lines,
+  onLinesChange,
+  onReset,
+  mirrorTargetMap = EMPTY_MAP,
+}: EditorCanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const activeLayerRef = useRef<SVGGElement>(null);
   const ghostLayerRef = useRef<SVGGElement>(null);
@@ -70,6 +80,11 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
     pointIndex: number;
   } | null>(null);
   const [showCrosshairCursor, setShowCrosshairCursor] = useState(false);
+  const { activeGuides, setActiveGuides, computeSnap, clearGuides } = useAlignmentGuides(
+    lines,
+    mode,
+    draggedPoint
+  );
 
   // Render paths and controls
   useEffect(() => {
@@ -83,10 +98,10 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
     if (!activeLayer || !ghostLayer || !controlsLayer || !connectionLayer) return;
 
     // Clear layers
-    activeLayer.innerHTML = '';
-    ghostLayer.innerHTML = '';
-    controlsLayer.innerHTML = '';
-    connectionLayer.innerHTML = '';
+    while (activeLayer.firstChild) activeLayer.removeChild(activeLayer.firstChild);
+    while (ghostLayer.firstChild) ghostLayer.removeChild(ghostLayer.firstChild);
+    while (controlsLayer.firstChild) controlsLayer.removeChild(controlsLayer.firstChild);
+    while (connectionLayer.firstChild) connectionLayer.removeChild(connectionLayer.firstChild);
 
     // Generate path string (connect anchor points only)
     const generatePathD = (points: PathPoint[]) => {
@@ -103,6 +118,8 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
     lines.forEach((line, index) => {
       const activePoints = line[mode];
       const ghostPoints = line[mode === 'menu' ? 'close' : 'menu'];
+      const isMirrorTarget = mirrorTargetMap.has(index);
+      const sourceLineIndex = mirrorTargetMap.get(index);
 
       // Draw Ghost Path (Reference)
       const ghostPathD = generatePathD(ghostPoints);
@@ -119,9 +136,18 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
       if (activePathD) {
         const activePath = document.createElementNS(SVG_NS, 'path');
         activePath.setAttribute('d', activePathD);
-        activePath.classList.add(styles.editorPath);
         activePath.dataset.lineIndex = index.toString();
-        activePath.setAttribute('stroke', lineColor);
+
+        if (isMirrorTarget && sourceLineIndex !== undefined) {
+          // Mirror target: dashed path with source line color, reduced opacity
+          const sourceColor = getLineColor(sourceLineIndex, lines[sourceLineIndex]?.color);
+          activePath.classList.add(styles.editorPath);
+          activePath.classList.add(styles.mirrorTargetPath);
+          activePath.setAttribute('stroke', sourceColor);
+        } else {
+          activePath.classList.add(styles.editorPath);
+          activePath.setAttribute('stroke', lineColor);
+        }
         activeLayer.appendChild(activePath);
       }
 
@@ -132,24 +158,35 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
           circle.setAttribute('cx', point.x.toString());
           circle.setAttribute('cy', point.y.toString());
           circle.setAttribute('r', '6');
-          circle.classList.add(styles.controlPoint);
-          circle.setAttribute('fill', lineColor);
-
-          // Add focused class if this point is focused
-          if (
-            focusedPoint &&
-            focusedPoint.lineIndex === index &&
-            focusedPoint.pointIndex === pointIndex
-          ) {
-            circle.classList.add(styles.focusedPoint);
-          }
-
           circle.dataset.lineIndex = index.toString();
           circle.dataset.pointIndex = pointIndex.toString();
+
+          if (isMirrorTarget && sourceLineIndex !== undefined) {
+            // Mirror target: disabled control point with source color dashed border
+            const sourceColor = getLineColor(sourceLineIndex, lines[sourceLineIndex]?.color);
+            circle.classList.add(styles.controlPoint);
+            circle.classList.add(styles.mirrorTargetPoint);
+            circle.setAttribute('fill', 'transparent');
+            circle.setAttribute('stroke', sourceColor);
+          } else {
+            circle.classList.add(styles.controlPoint);
+            circle.setAttribute('fill', lineColor);
+
+            // Add focused class if this point is focused
+            if (
+              focusedPoint &&
+              focusedPoint.lineIndex === index &&
+              focusedPoint.pointIndex === pointIndex
+            ) {
+              circle.classList.add(styles.focusedPoint);
+            }
+          }
+
           controlsLayer.appendChild(circle);
 
-          // Add minus icon for Pen- mode on hover
+          // Add minus icon for Pen- mode on hover (not for mirror targets)
           if (
+            !isMirrorTarget &&
             activeTool === 'pen-remove' &&
             hoveredPoint &&
             hoveredPoint.lineIndex === index &&
@@ -263,7 +300,7 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
       plusIcon.classList.add(styles.penAddPreviewIcon);
       connectionLayer.appendChild(plusIcon);
     }
-  }, [lines, mode, hoveredPoint, penAddPreview, activeTool, focusedPoint]);
+  }, [lines, mode, hoveredPoint, penAddPreview, activeTool, focusedPoint, mirrorTargetMap]);
 
   const getSVGPoint = (event: MouseEvent): DOMPoint => {
     const svg = svgRef.current;
@@ -298,6 +335,7 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
       const pointIndex = parseInt(target.getAttribute('data-point-index') || '0');
 
       if (lineIndex >= lines.length) return;
+      if (mirrorTargetMap.has(lineIndex)) return;
 
       const newLines = JSON.parse(JSON.stringify(lines)) as LineState[];
       const anchors = newLines[lineIndex][mode].filter((p) => p.type === 'anchor');
@@ -324,6 +362,7 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
         );
 
         if (lineIndex >= lines.length) return;
+        if (mirrorTargetMap.has(lineIndex)) return;
 
         const pt = getSVGPoint(e.nativeEvent as unknown as MouseEvent);
 
@@ -415,6 +454,7 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
       const pointIndex = parseInt(target.getAttribute('data-point-index') || '0');
 
       if (lineIndex >= lines.length) return;
+      if (mirrorTargetMap.has(lineIndex)) return;
 
       const currentPoint = lines[lineIndex][mode][pointIndex];
 
@@ -517,37 +557,47 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
       let y = pt.y;
 
       // Shift Key: Axis Lock
-      if (e.shiftKey) {
+      const shiftHeld = e.shiftKey;
+      let lockedAxis: 'x' | 'y' | null = null;
+      if (shiftHeld) {
         const dx = Math.abs(x - draggedPoint.originX);
         const dy = Math.abs(y - draggedPoint.originY);
 
         if (dx > dy) {
           y = draggedPoint.originY; // Lock Y (Horizontal movement)
+          lockedAxis = 'y';
         } else {
           x = draggedPoint.originX; // Lock X (Vertical movement)
+          lockedAxis = 'x';
         }
       }
 
-      // Grid Snap (5px)
-      x = Math.round(x / 5) * 5;
-      y = Math.round(y / 5) * 5;
+      // Alignment guide detection via hook
+      const snap = computeSnap(x, y, lockedAxis);
+      x = snap.x;
+      y = snap.y;
+      setActiveGuides(snap.guides);
 
-      // Update State
-      const newLines = JSON.parse(JSON.stringify(lines)) as LineState[];
-      const currentPoint = newLines[draggedPoint.lineIndex][mode][draggedPoint.pointIndex];
-      newLines[draggedPoint.lineIndex][mode][draggedPoint.pointIndex] = {
-        ...currentPoint,
-        x,
-        y,
-      };
+      // Update State with shallow immutable update (Fix #2)
+      const newLines = lines.map((line, i) =>
+        i === draggedPoint.lineIndex
+          ? {
+              ...line,
+              [mode]: line[mode].map((p, j) =>
+                j === draggedPoint.pointIndex ? { ...p, x, y } : p
+              ),
+            }
+          : line
+      );
       onLinesChange(newLines);
     },
-    [draggedPoint, lines, mode, onLinesChange]
+    [draggedPoint, lines, mode, onLinesChange, computeSnap, setActiveGuides]
   );
 
   const handleMouseUp = useCallback(() => {
     setDraggedPoint(null);
-  }, []);
+    clearGuides();
+  }, [clearGuides]);
 
   useEffect(() => {
     if (!draggedPoint) return;
@@ -595,6 +645,9 @@ export default function EditorCanvas({ mode, lines, onLinesChange, onReset }: Ed
 
         {/* Connection lines */}
         <g ref={connectionLayerRef} id="connection-layer"></g>
+
+        {/* Alignment guides (visible during drag) */}
+        <GuidesLayer guides={activeGuides} />
 
         {/* Control points */}
         <g ref={controlsLayerRef} id="controls-layer"></g>
