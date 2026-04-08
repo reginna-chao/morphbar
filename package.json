@@ -5,6 +5,7 @@
   "author": "Reginna Chao",
   "license": "MIT",
   "type": "module",
+  "packageManager": "pnpm@10.30.2",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
