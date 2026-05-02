@@ -242,6 +242,8 @@ function App() {
             onLinesChange={handleLinesChange}
             mirrorGroups={mirrorGroups}
             onMirrorGroupsChange={handleMirrorGroupsChange}
+            sizeConfig={sizeConfig}
+            onSizeConfigChange={setSizeConfig}
           />
         ) : (
           <CodePanel
