@@ -3,7 +3,7 @@ import SegmentedControl from './ui/SegmentedControl';
 import LineManager from './LineManager';
 import MirrorManager from './MirrorManager';
 import StylePanel from './StylePanel';
-import type { Mode, Lines, MirrorGroup, SizeConfig, StyleConfig } from '@/types';
+import type { Mode, Lines, MirrorGroup, SizeConfig, StyleConfig, TemplateResult } from '@/types';
 import styles from './ControlsSidebar.module.scss';
 import { Menu, X } from 'lucide-react';
 
@@ -14,6 +14,7 @@ interface ControlsSidebarProps {
   onLinesChange: (lines: Lines) => void;
   // Metadata-only updater (color/strokeWidth). Skips mirror-sync.
   onLinesMetaChange: (lines: Lines) => void;
+  onLoadTemplate: (result: TemplateResult) => void;
   mirrorGroups: MirrorGroup[];
   onMirrorGroupsChange: (groups: MirrorGroup[]) => void;
   sizeConfig: SizeConfig;
@@ -28,6 +29,7 @@ export default function ControlsSidebar({
   lines,
   onLinesChange,
   onLinesMetaChange,
+  onLoadTemplate,
   mirrorGroups,
   onMirrorGroupsChange,
   sizeConfig,
@@ -48,7 +50,7 @@ export default function ControlsSidebar({
   return (
     <aside className={styles.controlsSidebar}>
       <div className={styles.controlGroup}>
-        <LineManager lines={lines} onLinesChange={onLinesChange} />
+        <LineManager lines={lines} onLinesChange={onLinesChange} onLoadTemplate={onLoadTemplate} />
       </div>
 
       <div className={styles.controlGroup}>

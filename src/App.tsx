@@ -21,6 +21,7 @@ import type {
   MirrorGroup,
   LineIndex,
   PreviewThemeConfig,
+  TemplateResult,
 } from '@/types';
 import '@/styles/global.scss';
 import logoLight from '@/assets/images/logomark-light.svg';
@@ -151,6 +152,15 @@ function App() {
     toast.success('Reset successful', toastOptions.success);
   };
 
+  const handleLoadTemplate = useCallback((result: TemplateResult) => {
+    setLines(result.lines);
+    setMirrorGroups([]);
+    if (result.styleOverrides) {
+      setStyleConfig((prev) => ({ ...prev, ...result.styleOverrides }));
+    }
+    toast.success('Template applied', toastOptions.success);
+  }, []);
+
   // Map of target line index → source line index (for disabling targets on canvas)
   const mirrorTargetMap = useMemo(() => {
     const map = new Map<LineIndex, LineIndex>();
@@ -242,6 +252,7 @@ function App() {
             lines={lines}
             onLinesChange={handleLinesChange}
             onLinesMetaChange={handleLinesMetaChange}
+            onLoadTemplate={handleLoadTemplate}
             mirrorGroups={mirrorGroups}
             onMirrorGroupsChange={handleMirrorGroupsChange}
             sizeConfig={sizeConfig}
