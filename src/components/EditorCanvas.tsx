@@ -6,6 +6,7 @@ import GuidesLayer from './GuidesLayer';
 import { getLineColor } from '@/utils/colors';
 import { toastOptions } from '@/config/toast';
 import { useAlignmentGuides } from '@/hooks/useAlignmentGuides';
+import { useBoxSelection, makeKey, parseKey } from '@/hooks/useBoxSelection';
 import type { Mode, LineState, DraggedPoint, Tool, PathPoint, LineIndex } from '@/types';
 import styles from './EditorCanvas.module.scss';
 import { RotateCw } from 'lucide-react';
@@ -27,19 +28,14 @@ function pointToSegmentDistance(
   const lengthSquared = dx * dx + dy * dy;
 
   if (lengthSquared === 0) {
-    // Line segment degenerates to a point
     return Math.sqrt((px - x1) ** 2 + (py - y1) ** 2);
   }
 
-  // Calculate projection parameter t
   let t = ((px - x1) * dx + (py - y1) * dy) / lengthSquared;
-  t = Math.max(0, Math.min(1, t)); // Clamp to [0, 1] range
+  t = Math.max(0, Math.min(1, t));
 
-  // Calculate projection point
   const projX = x1 + t * dx;
   const projY = y1 + t * dy;
-
-  // Return distance
   return Math.sqrt((px - projX) ** 2 + (py - projY) ** 2);
 }
 
@@ -63,7 +59,10 @@ export default function EditorCanvas({
   const ghostLayerRef = useRef<SVGGElement>(null);
   const controlsLayerRef = useRef<SVGGElement>(null);
   const connectionLayerRef = useRef<SVGGElement>(null);
-  const [draggedPoint, setDraggedPoint] = useState<DraggedPoint | null>(null);
+  const marqueeLayerRef = useRef<SVGGElement>(null);
+
+  const [draggedPoints, setDraggedPoints] = useState<DraggedPoint[]>([]);
+  const anchorKeyRef = useRef<string | null>(null);
   const [hoveredPoint, setHoveredPoint] = useState<{
     lineIndex: number;
     pointIndex: number;
@@ -75,16 +74,60 @@ export default function EditorCanvas({
     y: number;
     lineIndex: number;
   } | null>(null);
-  const [focusedPoint, setFocusedPoint] = useState<{
-    lineIndex: number;
-    pointIndex: number;
-  } | null>(null);
   const [showCrosshairCursor, setShowCrosshairCursor] = useState(false);
+
+  const {
+    selectedPoints,
+    marqueeRect,
+    isSelected,
+    selectSingle,
+    toggleSelection,
+    clearSelection,
+    startMarquee,
+    updateMarquee,
+    endMarquee,
+    cancelMarquee,
+  } = useBoxSelection();
+
   const { activeGuides, setActiveGuides, computeSnap, clearGuides } = useAlignmentGuides(
     lines,
     mode,
-    draggedPoint
+    draggedPoints
   );
+
+  // Refs for marquee handler closure — avoid re-binding listeners every frame
+  const linesRef = useRef(lines);
+  const modeRef = useRef(mode);
+  const mirrorTargetMapRef = useRef(mirrorTargetMap);
+  const marqueeAdditiveRef = useRef(false);
+  useEffect(() => {
+    linesRef.current = lines;
+    modeRef.current = mode;
+    mirrorTargetMapRef.current = mirrorTargetMap;
+  }, [lines, mode, mirrorTargetMap]);
+
+  // Clear selection on mode change, tool leaves 'select', or line count change
+  useEffect(() => {
+    clearSelection();
+  }, [mode, clearSelection]);
+  useEffect(() => {
+    if (activeTool !== 'select') clearSelection();
+  }, [activeTool, clearSelection]);
+  useEffect(() => {
+    clearSelection();
+  }, [lines.length, clearSelection]);
+
+  // Esc clears selection (Select tool only)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && activeTool === 'select') {
+        clearSelection();
+        cancelMarquee();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [activeTool, clearSelection, cancelMarquee]);
 
   // Render paths and controls
   useEffect(() => {
@@ -97,13 +140,11 @@ export default function EditorCanvas({
 
     if (!activeLayer || !ghostLayer || !controlsLayer || !connectionLayer) return;
 
-    // Clear layers
     while (activeLayer.firstChild) activeLayer.removeChild(activeLayer.firstChild);
     while (ghostLayer.firstChild) ghostLayer.removeChild(ghostLayer.firstChild);
     while (controlsLayer.firstChild) controlsLayer.removeChild(controlsLayer.firstChild);
     while (connectionLayer.firstChild) connectionLayer.removeChild(connectionLayer.firstChild);
 
-    // Generate path string (connect anchor points only)
     const generatePathD = (points: PathPoint[]) => {
       const anchors = points.filter((p) => p.type === 'anchor');
       if (anchors.length < 2) return '';
@@ -121,7 +162,6 @@ export default function EditorCanvas({
       const isMirrorTarget = mirrorTargetMap.has(index);
       const sourceLineIndex = mirrorTargetMap.get(index);
 
-      // Draw Ghost Path (Reference)
       const ghostPathD = generatePathD(ghostPoints);
       if (ghostPathD) {
         const ghostPath = document.createElementNS(SVG_NS, 'path');
@@ -130,7 +170,6 @@ export default function EditorCanvas({
         ghostLayer.appendChild(ghostPath);
       }
 
-      // Draw Active Path
       const lineColor = getLineColor(index, line.color);
       const activePathD = generatePathD(activePoints);
       if (activePathD) {
@@ -139,7 +178,6 @@ export default function EditorCanvas({
         activePath.dataset.lineIndex = index.toString();
 
         if (isMirrorTarget && sourceLineIndex !== undefined) {
-          // Mirror target: dashed path with source line color, reduced opacity
           const sourceColor = getLineColor(sourceLineIndex, lines[sourceLineIndex]?.color);
           activePath.classList.add(styles.editorPath);
           activePath.classList.add(styles.mirrorTargetPath);
@@ -151,7 +189,6 @@ export default function EditorCanvas({
         activeLayer.appendChild(activePath);
       }
 
-      // Draw Controls for Active Path (anchor points only)
       activePoints.forEach((point, pointIndex) => {
         if (point.type === 'anchor') {
           const circle = document.createElementNS(SVG_NS, 'circle');
@@ -162,7 +199,6 @@ export default function EditorCanvas({
           circle.dataset.pointIndex = pointIndex.toString();
 
           if (isMirrorTarget && sourceLineIndex !== undefined) {
-            // Mirror target: disabled control point with source color dashed border
             const sourceColor = getLineColor(sourceLineIndex, lines[sourceLineIndex]?.color);
             circle.classList.add(styles.controlPoint);
             circle.classList.add(styles.mirrorTargetPoint);
@@ -172,19 +208,13 @@ export default function EditorCanvas({
             circle.classList.add(styles.controlPoint);
             circle.setAttribute('fill', lineColor);
 
-            // Add focused class if this point is focused
-            if (
-              focusedPoint &&
-              focusedPoint.lineIndex === index &&
-              focusedPoint.pointIndex === pointIndex
-            ) {
-              circle.classList.add(styles.focusedPoint);
+            if (isSelected(index, pointIndex)) {
+              circle.classList.add(styles.selectedPoint);
             }
           }
 
           controlsLayer.appendChild(circle);
 
-          // Add minus icon for Pen- mode on hover (not for mirror targets)
           if (
             !isMirrorTarget &&
             activeTool === 'pen-remove' &&
@@ -193,7 +223,6 @@ export default function EditorCanvas({
             hoveredPoint.pointIndex === pointIndex
           ) {
             const anchors = activePoints.filter((p) => p.type === 'anchor');
-            // Only show delete icon if we can delete (more than 2 anchors)
             if (anchors.length > 2) {
               const minusIcon = document.createElementNS(SVG_NS, 'path');
               const size = 3;
@@ -209,17 +238,14 @@ export default function EditorCanvas({
       });
     });
 
-    // Draw connection and highlight corresponding path when hovering a point
     if (hoveredPoint !== null && hoveredPoint.lineIndex < lines.length) {
       const { lineIndex, pointIndex, isHeadOrTail } = hoveredPoint;
       const oppositeMode = mode === 'menu' ? 'close' : 'menu';
       const correspondingPoints = lines[lineIndex][oppositeMode];
 
-      // Safety check: ensure point still exists
       const activePoint = lines[lineIndex]?.[mode]?.[pointIndex];
       if (!activePoint) return;
 
-      // Always highlight the entire corresponding path
       const correspondingPathD = generatePathD(correspondingPoints);
       if (correspondingPathD) {
         const highlightPath = document.createElementNS(SVG_NS, 'path');
@@ -228,9 +254,7 @@ export default function EditorCanvas({
         connectionLayer.appendChild(highlightPath);
       }
 
-      // Only show connection line and point if hovering head or tail
       if (isHeadOrTail) {
-        // Find corresponding head/tail point index in opposite mode
         const currentAnchorIndices = lines[lineIndex][mode]
           .map((p, i) => (p.type === 'anchor' ? i : -1))
           .filter((i) => i !== -1);
@@ -244,7 +268,6 @@ export default function EditorCanvas({
           : oppositeAnchorIndices[oppositeAnchorIndices.length - 1];
         const correspondingPoint = correspondingPoints[correspondingPointIndex];
 
-        // Draw connection line
         const connectionLine = document.createElementNS(SVG_NS, 'line');
         connectionLine.setAttribute('x1', activePoint.x.toString());
         connectionLine.setAttribute('y1', activePoint.y.toString());
@@ -253,7 +276,6 @@ export default function EditorCanvas({
         connectionLine.classList.add(styles.connectionLine);
         connectionLayer.appendChild(connectionLine);
 
-        // Highlight corresponding point
         const correspondingCircle = document.createElementNS(SVG_NS, 'circle');
         correspondingCircle.setAttribute('cx', correspondingPoint.x.toString());
         correspondingCircle.setAttribute('cy', correspondingPoint.y.toString());
@@ -267,13 +289,11 @@ export default function EditorCanvas({
       }
     }
 
-    // Draw Pen+ preview (semi-transparent circle with + icon)
     if (
       penAddPreview !== null &&
       activeTool === 'pen-add' &&
       penAddPreview.lineIndex < lines.length
     ) {
-      // Circle (80% size = radius 4.8)
       const previewCircle = document.createElementNS(SVG_NS, 'circle');
       previewCircle.setAttribute('cx', penAddPreview.x.toString());
       previewCircle.setAttribute('cy', penAddPreview.y.toString());
@@ -288,9 +308,8 @@ export default function EditorCanvas({
       previewCircle.setAttribute('stroke', previewColor);
       connectionLayer.appendChild(previewCircle);
 
-      // Plus icon in the center
       const plusIcon = document.createElementNS(SVG_NS, 'path');
-      const size = 2.5; // Half size of + icon
+      const size = 2.5;
       const cx = penAddPreview.x;
       const cy = penAddPreview.y;
       plusIcon.setAttribute(
@@ -300,7 +319,37 @@ export default function EditorCanvas({
       plusIcon.classList.add(styles.penAddPreviewIcon);
       connectionLayer.appendChild(plusIcon);
     }
-  }, [lines, mode, hoveredPoint, penAddPreview, activeTool, focusedPoint, mirrorTargetMap]);
+  }, [
+    lines,
+    mode,
+    hoveredPoint,
+    penAddPreview,
+    activeTool,
+    selectedPoints,
+    mirrorTargetMap,
+    isSelected,
+  ]);
+
+  // Render marquee rectangle
+  useEffect(() => {
+    const layer = marqueeLayerRef.current;
+    if (!layer) return;
+    while (layer.firstChild) layer.removeChild(layer.firstChild);
+    if (!marqueeRect) return;
+
+    const left = Math.min(marqueeRect.x1, marqueeRect.x2);
+    const top = Math.min(marqueeRect.y1, marqueeRect.y2);
+    const width = Math.abs(marqueeRect.x2 - marqueeRect.x1);
+    const height = Math.abs(marqueeRect.y2 - marqueeRect.y1);
+
+    const rect = document.createElementNS(SVG_NS, 'rect');
+    rect.setAttribute('x', left.toString());
+    rect.setAttribute('y', top.toString());
+    rect.setAttribute('width', width.toString());
+    rect.setAttribute('height', height.toString());
+    rect.classList.add(styles.marqueeRect);
+    layer.appendChild(rect);
+  }, [marqueeRect]);
 
   const getSVGPoint = (event: MouseEvent): DOMPoint => {
     const svg = svgRef.current;
@@ -314,23 +363,33 @@ export default function EditorCanvas({
     return pt.matrixTransform(ctm.inverse());
   };
 
+  // Helpers reading current selection ----------------------------------------
+  const getSinglySelected = (): { lineIndex: number; pointIndex: number } | null => {
+    if (selectedPoints.size !== 1) return null;
+    const [key] = Array.from(selectedPoints);
+    return parseKey(key);
+  };
+
+  const buildOriginsForSelection = (): DraggedPoint[] => {
+    const origins: DraggedPoint[] = [];
+    selectedPoints.forEach((key) => {
+      const { lineIndex, pointIndex } = parseKey(key);
+      const p = lines[lineIndex]?.[mode]?.[pointIndex];
+      if (!p) return;
+      if (mirrorTargetMap.has(lineIndex)) return;
+      origins.push({ lineIndex, pointIndex, originX: p.x, originY: p.y });
+    });
+    return origins;
+  };
+
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
     const target = e.target as Element;
+    const isControlPoint = target.classList.contains(styles.controlPoint);
+    const isPath = target.classList.contains(styles.editorPath);
 
-    // Set focus when clicking control point
-    if (target.classList.contains(styles.controlPoint)) {
-      const lineIndex = parseInt(target.getAttribute('data-line-index') || '0');
-      const pointIndex = parseInt(target.getAttribute('data-point-index') || '0');
-      if (lineIndex < lines.length) {
-        setFocusedPoint({ lineIndex, pointIndex });
-      }
-    } else {
-      // Clear focus when clicking elsewhere
-      setFocusedPoint(null);
-    }
-
-    // Pen- mode: Delete anchor point
-    if (activeTool === 'pen-remove' && target.classList.contains(styles.controlPoint)) {
+    // --- Pen- tool: delete anchor ---
+    if (activeTool === 'pen-remove') {
+      if (!isControlPoint) return;
       const lineIndex = parseInt(target.getAttribute('data-line-index') || '0');
       const pointIndex = parseInt(target.getAttribute('data-point-index') || '0');
 
@@ -340,10 +399,9 @@ export default function EditorCanvas({
       const newLines = JSON.parse(JSON.stringify(lines)) as LineState[];
       const anchors = newLines[lineIndex][mode].filter((p) => p.type === 'anchor');
 
-      // Keep at least 2 anchor points
       if (anchors.length > 2) {
         newLines[lineIndex][mode].splice(pointIndex, 1);
-        setHoveredPoint(null); // Clear hover state to prevent accessing deleted point
+        setHoveredPoint(null);
         onLinesChange(newLines);
       } else {
         toast.error('A line must have at least two points', toastOptions.error);
@@ -351,10 +409,10 @@ export default function EditorCanvas({
       return;
     }
 
-    // Pen+ mode: Insert anchor point in middle of nearest segment, or extend head/tail points
+    // --- Pen+ tool: insert / extend ---
     if (activeTool === 'pen-add') {
-      // Case 1: Click path - insert in middle of segment
-      if (target.classList.contains(styles.editorPath)) {
+      // Insert in middle of segment
+      if (isPath) {
         const lineIndex = parseInt(
           target.getAttribute('data-line-index') ||
             target.parentElement?.getAttribute('data-line-index') ||
@@ -365,8 +423,6 @@ export default function EditorCanvas({
         if (mirrorTargetMap.has(lineIndex)) return;
 
         const pt = getSVGPoint(e.nativeEvent as unknown as MouseEvent);
-
-        // Grid snap
         const x = Math.round(pt.x / 5) * 5;
         const y = Math.round(pt.y / 5) * 5;
 
@@ -374,15 +430,11 @@ export default function EditorCanvas({
         const currentPoints = newLines[lineIndex][mode];
         const anchors = currentPoints.filter((p) => p.type === 'anchor');
 
-        // Find nearest line segment to click position
         let minDist = Infinity;
         let insertAfterIndex = 0;
-
         for (let i = 0; i < anchors.length - 1; i++) {
           const p1 = anchors[i];
           const p2 = anchors[i + 1];
-
-          // Calculate distance from point to segment
           const dist = pointToSegmentDistance(x, y, p1.x, p1.y, p2.x, p2.y);
           if (dist < minDist) {
             minDist = dist;
@@ -390,32 +442,25 @@ export default function EditorCanvas({
           }
         }
 
-        // Find corresponding original index position (including control points)
         const anchorIndices = currentPoints
           .map((p, i) => (p.type === 'anchor' ? i : -1))
           .filter((i) => i !== -1);
         const insertPosition = anchorIndices[insertAfterIndex + 1];
 
-        // Insert new anchor point
         newLines[lineIndex][mode].splice(insertPosition, 0, { x, y, type: 'anchor' });
         onLinesChange(newLines);
         return;
       }
 
-      // Case 2: Click blank area - if head/tail point is focused, extend with new point
-      if (
-        focusedPoint &&
-        focusedPoint.lineIndex < lines.length &&
-        !target.classList.contains(styles.controlPoint) &&
-        !target.classList.contains(styles.editorPath)
-      ) {
-        const { lineIndex, pointIndex } = focusedPoint;
+      // Extend head/tail (only when exactly one point is selected)
+      const focused = getSinglySelected();
+      if (focused && focused.lineIndex < lines.length && !isControlPoint && !isPath) {
+        const { lineIndex, pointIndex } = focused;
         const currentPoints = lines[lineIndex][mode];
         const anchorIndices = currentPoints
           .map((p, i) => (p.type === 'anchor' ? i : -1))
           .filter((i) => i !== -1);
 
-        // Check if this is head or tail point
         const isHead = pointIndex === anchorIndices[0];
         const isTail = pointIndex === anchorIndices[anchorIndices.length - 1];
 
@@ -427,43 +472,71 @@ export default function EditorCanvas({
           const newLines = JSON.parse(JSON.stringify(lines)) as LineState[];
 
           if (isHead) {
-            // Insert new point at head
             newLines[lineIndex][mode].unshift({ x, y, type: 'anchor' });
-            // Update focus to new head point (index becomes 0)
-            setFocusedPoint({ lineIndex, pointIndex: 0 });
+            // selection cleared by lines.length effect, then re-set below
           } else {
-            // Insert new point at tail
             newLines[lineIndex][mode].push({ x, y, type: 'anchor' });
-            // Update focus to new tail point
-            const newLength = newLines[lineIndex][mode].length;
-            setFocusedPoint({ lineIndex, pointIndex: newLength - 1 });
           }
-
           onLinesChange(newLines);
           return;
         }
       }
+
+      // Pen+ also allows dragging a single control point
+      if (isControlPoint) {
+        const lineIndex = parseInt(target.getAttribute('data-line-index') || '0');
+        const pointIndex = parseInt(target.getAttribute('data-point-index') || '0');
+        if (lineIndex >= lines.length) return;
+        if (mirrorTargetMap.has(lineIndex)) return;
+
+        const p = lines[lineIndex][mode][pointIndex];
+        selectSingle(lineIndex, pointIndex);
+        const key = makeKey(lineIndex, pointIndex);
+        anchorKeyRef.current = key;
+        setDraggedPoints([{ lineIndex, pointIndex, originX: p.x, originY: p.y }]);
+      }
+      return;
     }
 
-    // Select mode or Pen+ mode: Drag anchor points
-    if (
-      (activeTool === 'select' || activeTool === 'pen-add') &&
-      target.classList.contains(styles.controlPoint)
-    ) {
-      const lineIndex = parseInt(target.getAttribute('data-line-index') || '0');
-      const pointIndex = parseInt(target.getAttribute('data-point-index') || '0');
+    // --- Select tool ---
+    if (activeTool === 'select') {
+      if (isControlPoint) {
+        const lineIndex = parseInt(target.getAttribute('data-line-index') || '0');
+        const pointIndex = parseInt(target.getAttribute('data-point-index') || '0');
 
-      if (lineIndex >= lines.length) return;
-      if (mirrorTargetMap.has(lineIndex)) return;
+        if (lineIndex >= lines.length) return;
+        if (mirrorTargetMap.has(lineIndex)) return;
 
-      const currentPoint = lines[lineIndex][mode][pointIndex];
+        const key = makeKey(lineIndex, pointIndex);
+        const alreadySelected = selectedPoints.has(key);
 
-      setDraggedPoint({
-        lineIndex,
-        pointIndex,
-        originX: currentPoint.x,
-        originY: currentPoint.y,
-      });
+        if (alreadySelected) {
+          // Multi-drag: drag all selected points
+          const origins = buildOriginsForSelection();
+          if (origins.length === 0) return;
+          anchorKeyRef.current = key;
+          setDraggedPoints(origins);
+          return;
+        }
+
+        if (e.shiftKey) {
+          // Shift+Click on unselected: toggle, no drag
+          toggleSelection(lineIndex, pointIndex);
+          return;
+        }
+
+        // Replace selection and start single-point drag
+        const p = lines[lineIndex][mode][pointIndex];
+        selectSingle(lineIndex, pointIndex);
+        anchorKeyRef.current = key;
+        setDraggedPoints([{ lineIndex, pointIndex, originX: p.x, originY: p.y }]);
+        return;
+      }
+
+      // Click empty area or path → start marquee
+      const pt = getSVGPoint(e.nativeEvent as unknown as MouseEvent);
+      marqueeAdditiveRef.current = e.shiftKey;
+      startMarquee(pt.x, pt.y);
     }
   };
 
@@ -475,7 +548,6 @@ export default function EditorCanvas({
 
       if (lineIndex >= lines.length) return;
 
-      // Check if this point is head or tail (first or last anchor)
       const anchorIndices = lines[lineIndex][mode]
         .map((p, i) => (p.type === 'anchor' ? i : -1))
         .filter((i) => i !== -1);
@@ -496,7 +568,6 @@ export default function EditorCanvas({
   const handleSvgMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     const target = e.target as Element;
 
-    // Pen+ mode: Show preview point or crosshair cursor
     if (activeTool === 'pen-add') {
       if (target.classList.contains(styles.editorPath)) {
         const lineIndex = parseInt(
@@ -505,22 +576,20 @@ export default function EditorCanvas({
             '0'
         );
         const pt = getSVGPoint(e.nativeEvent as unknown as MouseEvent);
-
-        // Grid snap
         const x = Math.round(pt.x / 5) * 5;
         const y = Math.round(pt.y / 5) * 5;
 
         setPenAddPreview({ x, y, lineIndex });
         setShowCrosshairCursor(false);
       } else if (!target.classList.contains(styles.controlPoint)) {
-        // Check if there is a focused head or tail point
-        if (focusedPoint && focusedPoint.lineIndex < lines.length) {
-          const currentPoints = lines[focusedPoint.lineIndex][mode];
+        const focused = getSinglySelected();
+        if (focused && focused.lineIndex < lines.length) {
+          const currentPoints = lines[focused.lineIndex][mode];
           const anchorIndices = currentPoints
             .map((p, i) => (p.type === 'anchor' ? i : -1))
             .filter((i) => i !== -1);
-          const isHead = focusedPoint.pointIndex === anchorIndices[0];
-          const isTail = focusedPoint.pointIndex === anchorIndices[anchorIndices.length - 1];
+          const isHead = focused.pointIndex === anchorIndices[0];
+          const isTail = focused.pointIndex === anchorIndices[anchorIndices.length - 1];
 
           if (isHead || isTail) {
             setShowCrosshairCursor(true);
@@ -548,59 +617,76 @@ export default function EditorCanvas({
     setShowCrosshairCursor(false);
   };
 
+  // Multi-point drag: compute delta from anchor, apply to all dragged points
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
-      if (!draggedPoint || draggedPoint.lineIndex >= lines.length) return;
+      if (draggedPoints.length === 0) return;
+      const anchorKey = anchorKeyRef.current;
+      if (!anchorKey) return;
+      const { lineIndex: aLine, pointIndex: aPoint } = parseKey(anchorKey);
+      const anchor = draggedPoints.find((d) => d.lineIndex === aLine && d.pointIndex === aPoint);
+      if (!anchor) return;
 
       const pt = getSVGPoint(e);
       let x = pt.x;
       let y = pt.y;
 
-      // Shift Key: Axis Lock
-      const shiftHeld = e.shiftKey;
       let lockedAxis: 'x' | 'y' | null = null;
-      if (shiftHeld) {
-        const dx = Math.abs(x - draggedPoint.originX);
-        const dy = Math.abs(y - draggedPoint.originY);
-
-        if (dx > dy) {
-          y = draggedPoint.originY; // Lock Y (Horizontal movement)
+      if (e.shiftKey) {
+        const adx = Math.abs(x - anchor.originX);
+        const ady = Math.abs(y - anchor.originY);
+        if (adx > ady) {
+          y = anchor.originY;
           lockedAxis = 'y';
         } else {
-          x = draggedPoint.originX; // Lock X (Vertical movement)
+          x = anchor.originX;
           lockedAxis = 'x';
         }
       }
 
-      // Alignment guide detection via hook
       const snap = computeSnap(x, y, lockedAxis);
       x = snap.x;
       y = snap.y;
       setActiveGuides(snap.guides);
 
-      // Update State with shallow immutable update (Fix #2)
-      const newLines = lines.map((line, i) =>
-        i === draggedPoint.lineIndex
-          ? {
-              ...line,
-              [mode]: line[mode].map((p, j) =>
-                j === draggedPoint.pointIndex ? { ...p, x, y } : p
-              ),
-            }
-          : line
-      );
+      const dx = x - anchor.originX;
+      const dy = y - anchor.originY;
+
+      // Build line→(pointIndex→origin) lookup once per move
+      const updatesByLine = new Map<number, Map<number, DraggedPoint>>();
+      for (const d of draggedPoints) {
+        let inner = updatesByLine.get(d.lineIndex);
+        if (!inner) {
+          inner = new Map();
+          updatesByLine.set(d.lineIndex, inner);
+        }
+        inner.set(d.pointIndex, d);
+      }
+
+      const newLines = lines.map((line, i) => {
+        const inner = updatesByLine.get(i);
+        if (!inner) return line;
+        return {
+          ...line,
+          [mode]: line[mode].map((p, j) => {
+            const u = inner.get(j);
+            return u ? { ...p, x: u.originX + dx, y: u.originY + dy } : p;
+          }),
+        };
+      });
       onLinesChange(newLines);
     },
-    [draggedPoint, lines, mode, onLinesChange, computeSnap, setActiveGuides]
+    [draggedPoints, lines, mode, onLinesChange, computeSnap, setActiveGuides]
   );
 
   const handleMouseUp = useCallback(() => {
-    setDraggedPoint(null);
+    setDraggedPoints([]);
+    anchorKeyRef.current = null;
     clearGuides();
   }, [clearGuides]);
 
   useEffect(() => {
-    if (!draggedPoint) return;
+    if (draggedPoints.length === 0) return;
 
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
@@ -609,7 +695,34 @@ export default function EditorCanvas({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [draggedPoint, handleMouseMove, handleMouseUp]);
+  }, [draggedPoints, handleMouseMove, handleMouseUp]);
+
+  // Marquee drag listeners — bound only on start, unbound on end
+  const isMarqueeing = marqueeRect !== null;
+  useEffect(() => {
+    if (!isMarqueeing) return;
+
+    const onMove = (e: MouseEvent) => {
+      const pt = getSVGPoint(e);
+      updateMarquee(pt.x, pt.y);
+    };
+    const onUp = () => {
+      endMarquee(
+        linesRef.current,
+        modeRef.current,
+        mirrorTargetMapRef.current,
+        marqueeAdditiveRef.current
+      );
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMarqueeing]);
 
   return (
     <div className={styles.editorArea}>
@@ -624,7 +737,6 @@ export default function EditorCanvas({
         onMouseMove={handleSvgMouseMove}
         onMouseLeave={handleSvgMouseLeave}
       >
-        {/* Grid lines for reference */}
         <defs>
           <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
             <path
@@ -637,20 +749,14 @@ export default function EditorCanvas({
         </defs>
         <rect width="100" height="100" fill="url(#grid)" />
 
-        {/* Ghost paths (other state) */}
         <g ref={ghostLayerRef} id="ghost-layer"></g>
-
-        {/* Active paths */}
         <g ref={activeLayerRef} id="active-layer"></g>
-
-        {/* Connection lines */}
         <g ref={connectionLayerRef} id="connection-layer"></g>
 
-        {/* Alignment guides (visible during drag) */}
         <GuidesLayer guides={activeGuides} />
 
-        {/* Control points */}
         <g ref={controlsLayerRef} id="controls-layer"></g>
+        <g ref={marqueeLayerRef} id="marquee-layer"></g>
       </svg>
 
       <Button className={styles.btnReset} startIcon={<RotateCw />} onClick={onReset}>

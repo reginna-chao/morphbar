@@ -70,6 +70,14 @@ export interface DraggedPoint {
   originY: number;
 }
 
+// Rectangle (in SVG viewBox coordinates) used for marquee selection
+export interface MarqueeRect {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
 export type LineIndex = number;
 
 export interface MirrorGroup {
