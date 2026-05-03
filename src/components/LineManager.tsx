@@ -1,20 +1,23 @@
-import { Plus, Trash2, ArrowLeftRight, ArrowUpDown } from 'lucide-react';
+import { Plus, Trash2, ArrowLeftRight, ArrowUpDown, LayoutTemplate } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Button from './ui/Button';
+import TemplateModal from './TemplateModal';
 import { createDefaultLine, getLineColor } from '@/utils/colors';
-import type { Lines } from '../types';
+import type { Lines, TemplateResult } from '../types';
 import styles from './LineManager.module.scss';
 
 interface LineManagerProps {
   lines: Lines;
   onLinesChange: (lines: Lines) => void;
+  onLoadTemplate: (result: TemplateResult) => void;
 }
 
 const MAX_LINES = 10;
 const MIN_LINES = 1;
 
-export default function LineManager({ lines, onLinesChange }: LineManagerProps) {
+export default function LineManager({ lines, onLinesChange, onLoadTemplate }: LineManagerProps) {
   const [activeSwapMenu, setActiveSwapMenu] = useState<number | null>(null);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
 
   // Close swap menu when clicking outside
   useEffect(() => {
@@ -75,17 +78,35 @@ export default function LineManager({ lines, onLinesChange }: LineManagerProps) 
         <h3>
           Lines ({lines.length}/{MAX_LINES})
         </h3>
-        <Button
-          onClick={handleAddLine}
-          disabled={lines.length >= MAX_LINES}
-          size="small"
-          aria-label="Add new line"
-          data-tooltip-id="app-tooltip"
-          data-tooltip-content="Add new line"
-        >
-          <Plus size={16} />
-        </Button>
+        <div className={styles.headerActions}>
+          <Button
+            onClick={() => setTemplateModalOpen(true)}
+            size="small"
+            variant="ghost"
+            aria-label="Load template"
+            data-tooltip-id="app-tooltip"
+            data-tooltip-content="Load template (replaces all lines)"
+          >
+            <LayoutTemplate size={16} />
+          </Button>
+          <Button
+            onClick={handleAddLine}
+            disabled={lines.length >= MAX_LINES}
+            size="small"
+            aria-label="Add new line"
+            data-tooltip-id="app-tooltip"
+            data-tooltip-content="Add new line"
+          >
+            <Plus size={16} />
+          </Button>
+        </div>
       </div>
+
+      <TemplateModal
+        open={templateModalOpen}
+        onClose={() => setTemplateModalOpen(false)}
+        onApply={onLoadTemplate}
+      />
 
       <div className={styles.linesList}>
         {lines.map((line, index) => {

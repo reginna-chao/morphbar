@@ -20,6 +20,12 @@
   }
 }
 
+.headerActions {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
 .linesList {
   display: flex;
   flex-direction: column;

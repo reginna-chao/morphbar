@@ -114,7 +114,7 @@ MorphBar 是一個漢堡選單圖示動畫生成器，允許使用者視覺化�
 | ---- | ---------------------------- | ------------ | ------ | --------- |
 | 3    | 鏡射（水平/垂直）            | ⭐⭐⭐       | Medium | ✅ 完成 |
 | 6    | Menu/Close 水平移動距離      | ⭐⭐⭐       | Low    | ✅ 完成 |
-| 2    | 快速調整 Hamburger 間距      | ⭐⭐⭐       | Low    | 🤔 需討論 |
+| 2    | 快速調整 Hamburger 間距      | ⭐⭐⭐       | Low    | ✅ 完成（模板系統） |
 | 13   | Preview 區塊（不同顏色預覽） | ⭐⭐⭐⭐     | Medium | ✅ 完成 |
 | 5    | 對齊輔助線                   | ⭐⭐⭐⭐⭐   | High   | ✅ 完成 |
 | 11   | Style Panel（樣式設定）      | ⭐⭐⭐⭐⭐   | High   | ✅ 完成 |
@@ -122,18 +122,27 @@ MorphBar 是一個漢堡選單圖示動畫生成器，允許使用者視覺化�
 
 #### 功能細節
 
-**2. 快速調整 Hamburger 間距** ⭐⭐⭐ 🤔
+**2. 快速調整 Hamburger 間距** ⭐⭐⭐ ✅
 
-- **疑慮**：此功能僅適用於「標準漢堡選單」形狀
-- **問題**：當使用者自由編輯後，「間距」定義不明確
-- **建議替代方案**：
-  - **選項 A**：改為「預設模板系統」
-    - 提供模板：標準漢堡、箭頭、加號、X 型
-    - 每個模板有參數可調（間距、寬度）
-  - **選項 B**：限定使用情境
-    - 僅在「3 條水平線」狀態下顯示此功能
-    - 自動檢測是否符合標準形狀
-- **需要決策**：選擇哪個方案？
+- **決策（2026-05-03）**：採用模板系統作為「初始化/重置工具」（非即時調整）
+  - 拒絕原選項 A（即時調整與自由編輯衝突）與選項 B（自動偵測不可預測）
+  - 採變體：模板僅在 LineManager 透過 `Load Template` 按鈕載入
+- **已實作模板**：
+  - Hamburger → X（含 Line Spacing 參數）
+  - Hamburger → Arrow（含 Line Spacing 參數）
+  - Hamburger → Plus（含 Line Spacing 參數）
+  - Two Lines → X（含 Line Spacing 參數）
+- **UI 流程**：
+  1. LineManager header → `Load Template` 按鈕（Layout icon）
+  2. Modal：模板挑選器（4 卡片）→ Menu/Close 雙預覽 → 參數 slider
+  3. 警示文字：「Applying a template will replace all current lines and clear all mirror groups. This action cannot be undone.」
+  4. 使用者點 `Apply Template` 才實際覆寫；`Cancel` 或點背景關閉不影響當前狀態
+- **檔案**：
+  - `src/types/index.ts` - 新增 `Template`、`TemplateParam`
+  - `src/utils/templates.ts` - 模板定義與 generator
+  - `src/components/TemplateModal.tsx` + `.module.scss` - Modal 元件（含 `TemplatePreviewSvg` 內部子元件）
+  - `src/components/LineManager.tsx` - 整合 `Load Template` 按鈕
+  - `src/App.tsx` - `handleLoadTemplate` callback（重設 lines + mirrorGroups）
 
 **3. 鏡射管理系統（MirrorManager）** ⭐⭐⭐
 
@@ -459,16 +468,20 @@ MorphBar 是一個漢堡選單圖示動畫生成器，允許使用者視覺化�
 
 ## 待確認的設計決策
 
-### 1. 功能 #2：Hamburger 間距調整
+### 1. 功能 #2：Hamburger 間距調整 ✅ 已決策（2026-05-03）
 
-- [ ] 選擇方案：預設模板系統 vs 限定使用情境
-- [ ] 需要哪些預設模板？
+- [x] 選擇方案：採用「模板系統作為初始化/重置工具」（變體 A）
+- [x] 預設模板：Hamburger→X、Hamburger→Arrow、Hamburger→Plus、Two Lines→X
+- [x] 全數模板支援 Line Spacing 參數調整
 
 ### 2. 功能 #8：轉折點
 
-- [ ] 是否確定要支援多點路徑？
-- [ ] 允許 menu/close 有不同點數嗎？
-- [ ] 支援的曲線類型？
+- **Phase 1（多點直線路徑）**：✅ 已完成
+- **Phase 2（貝茲曲線）**：⏸ **暫緩 / 移至 Backlog**（決策日期 2026-05-03）
+  - 理由：影響 80% 程式碼、漢堡選單動畫 95% 都是直線、控制點手把學習成本偏離「快速生成」定位
+  - 型別系統已預留 `'control'` 欄位，未來收到具體使用者需求再評估
+- [ ] 允許 menu/close 有不同點數嗎？（待 Phase 2 重啟時決議）
+- [ ] 支援的曲線類型？（待 Phase 2 重啟時決議）
 
 ### 3. 功能 #11：Style Panel ✅ 已決策
 

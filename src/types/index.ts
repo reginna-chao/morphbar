@@ -96,3 +96,29 @@ export interface PreviewThemeConfig {
   theme: PreviewTheme;
   customColor: string; // hex, used when theme === 'custom'
 }
+
+// Template parameter definition (currently only numeric range params)
+export interface TemplateParam {
+  key: string;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  defaultValue: number;
+}
+
+// Result of applying a template: geometry + optional StyleConfig overrides.
+// Style overrides are applied to the global StyleConfig on confirm only.
+export interface TemplateResult {
+  lines: Lines;
+  styleOverrides?: Partial<StyleConfig>;
+}
+
+// Template descriptor. The generator owns which params map to geometry vs style.
+export interface Template {
+  id: string;
+  name: string;
+  description?: string;
+  params?: TemplateParam[];
+  generate: (params: Record<string, number>) => TemplateResult;
+}
