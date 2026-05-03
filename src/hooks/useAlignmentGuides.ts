@@ -17,34 +17,36 @@ interface SnapResult {
 /**
  * Custom hook that manages alignment guides and snap behavior
  * during drag operations in the SVG editor.
+ *
+ * Accepts an array of dragged points to support multi-point drag —
+ * all dragged points are excluded from alignment targets so the
+ * grabbed point can snap freely without colliding with siblings.
  */
-export function useAlignmentGuides(
-  lines: LineState[],
-  mode: Mode,
-  draggedPoint: DraggedPoint | null
-) {
+export function useAlignmentGuides(lines: LineState[], mode: Mode, draggedPoints: DraggedPoint[]) {
   const [activeGuides, setActiveGuides] = useState<AlignmentGuide[]>([]);
   const targetsRef = useRef<AlignmentTarget[]>([]);
+  const isDragging = draggedPoints.length > 0;
 
-  // Compute alignment targets once when drag starts (Fix #3)
+  // Compute alignment targets once when drag starts
   useEffect(() => {
-    if (!draggedPoint) {
+    if (!isDragging) {
       targetsRef.current = [];
       return;
     }
+    const draggedSet = new Set(draggedPoints.map((d) => `${d.lineIndex}:${d.pointIndex}`));
     const targets: AlignmentTarget[] = [];
     lines.forEach((line, lineIndex) => {
       const points = line[mode];
       points.forEach((point, pointIndex) => {
         if (point.type !== 'anchor') return;
-        if (lineIndex === draggedPoint.lineIndex && pointIndex === draggedPoint.pointIndex) return;
+        if (draggedSet.has(`${lineIndex}:${pointIndex}`)) return;
         targets.push({ x: point.x, y: point.y });
       });
     });
     targetsRef.current = targets;
-    // Only recompute when drag starts (draggedPoint transitions from null to non-null)
+    // Only recompute when drag starts (transitions from inactive to active)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draggedPoint !== null]);
+  }, [isDragging]);
 
   const computeSnap = useCallback(
     (rawX: number, rawY: number, lockedAxis: 'x' | 'y' | null): SnapResult => {
@@ -52,13 +54,13 @@ export function useAlignmentGuides(
       let y = rawY;
       const guides: AlignmentGuide[] = [];
 
-      // Track closest match per axis (Fix #4 & #5)
+      // Track closest match per axis
       let closestXDist = Infinity;
       let closestYDist = Infinity;
       let bestXSnap: { value: number; isCenter: boolean } | null = null;
       let bestYSnap: { value: number; isCenter: boolean } | null = null;
 
-      // Treat center (50, 50) as another candidate, not unconditional priority (Fix #5)
+      // Treat center (50, 50) as another candidate, not unconditional priority
       const allCandidates: Array<AlignmentTarget & { isCenter: boolean }> = [
         { x: 50, y: 50, isCenter: true },
         ...targetsRef.current.map((t) => ({ ...t, isCenter: false })),

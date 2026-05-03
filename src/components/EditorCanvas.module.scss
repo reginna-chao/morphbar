@@ -47,7 +47,7 @@
   }
 }
 
-.focusedPoint {
+.selectedPoint {
   r: 8 !important;
   stroke-width: 3 !important;
   filter: brightness(1.4) drop-shadow(0 0 4px currentColor) !important;
@@ -62,6 +62,15 @@
   50% {
     opacity: 0.7;
   }
+}
+
+.marqueeRect {
+  fill: var(--marquee-fill);
+  stroke: var(--marquee-stroke);
+  stroke-width: 1;
+  stroke-dasharray: 3, 2;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
 }
 
 .ghostPath {

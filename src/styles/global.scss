@@ -18,6 +18,8 @@
   --ghost-path-color: rgba(255, 255, 255, 0.1);
   --guide-color: rgba(255, 255, 255, 0.4);
   --guide-center-color: rgba(238, 70, 64, 0.6);
+  --marquee-fill: rgba(100, 150, 255, 0.15);
+  --marquee-stroke: rgba(100, 150, 255, 0.8);
 }
 
 // Light Theme
@@ -38,6 +40,8 @@
   --ghost-path-color: rgba(0, 0, 0, 0.1);
   --guide-color: rgba(0, 0, 0, 0.3);
   --guide-center-color: rgba(238, 70, 64, 0.5);
+  --marquee-fill: rgba(60, 110, 230, 0.12);
+  --marquee-stroke: rgba(60, 110, 230, 0.7);
 }
 
 // Global styles
