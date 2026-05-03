@@ -5,19 +5,33 @@ import type {
   GeneratedCode,
   ClassNameConfig,
   SizeConfig,
+  StyleConfig,
 } from '../types';
 import { calculatePathData } from './pathCalculation';
+
+const DEFAULT_STYLE_CONFIG: StyleConfig = {
+  strokeColor: '#ffffff',
+  strokeWidth: 3,
+  perLineColor: false,
+  perLineWidth: false,
+  backgroundColor: '#ffffff',
+  backgroundTransparent: true,
+  borderWidth: 0,
+  borderColor: '#000000',
+  borderRadius: 0,
+};
 
 export function generateCode(
   lines: LineState[],
   method: Method = 'checkbox',
   classNameConfig: ClassNameConfig = { baseClass: 'hamburger-menu', activeClass: 'is-active' },
-  sizeConfig: SizeConfig = { width: 50, strokeWidth: 3, horizontalShift: 0 }
+  sizeConfig: SizeConfig = { width: 50, horizontalShift: 0 },
+  styleConfig: StyleConfig = DEFAULT_STYLE_CONFIG
 ): GeneratedCode {
   const paths = lines.map((line) => calculatePathData(line, sizeConfig.horizontalShift));
 
   const html = generateHTML(paths, method, classNameConfig.baseClass, sizeConfig.horizontalShift);
-  const css = generateCSS(paths, method, classNameConfig, sizeConfig);
+  const css = generateCSS(paths, method, classNameConfig, sizeConfig, styleConfig, lines);
   const js = generateJS(method, classNameConfig);
 
   let fullCode = `<style>\n${css}\n</style>\n\n${html}`;
@@ -63,22 +77,57 @@ ${svgContent}
   }
 }
 
+function generatePerLineOverrides(lines: LineState[], styleConfig: StyleConfig): string {
+  const overrides: string[] = [];
+
+  lines.forEach((line, i) => {
+    const declarations: string[] = [];
+    if (styleConfig.perLineColor && line.color !== undefined) {
+      declarations.push(`  stroke: ${line.color};`);
+    }
+    if (styleConfig.perLineWidth && line.strokeWidth !== undefined) {
+      declarations.push(`  stroke-width: ${line.strokeWidth};`);
+    }
+    if (declarations.length > 0) {
+      overrides.push(`.line--${i + 1} {\n${declarations.join('\n')}\n}`);
+    }
+  });
+
+  return overrides.length > 0 ? '\n\n' + overrides.join('\n') : '';
+}
+
 function generateCSS(
   paths: PathData[],
   method: Method,
   classNameConfig: ClassNameConfig,
-  sizeConfig: SizeConfig
+  sizeConfig: SizeConfig,
+  styleConfig: StyleConfig,
+  lines: LineState[]
 ): string {
   const { baseClass, activeClass } = classNameConfig;
-  const { width, strokeWidth, horizontalShift } = sizeConfig;
+  const { width, horizontalShift } = sizeConfig;
+  const {
+    strokeColor,
+    strokeWidth,
+    backgroundColor,
+    backgroundTransparent,
+    borderWidth,
+    borderColor,
+    borderRadius,
+  } = styleConfig;
+
+  const backgroundValue = backgroundTransparent ? 'transparent' : backgroundColor;
+  // Spec: omit border when borderWidth === 0. We still need to reset the default
+  // <button> border for the `class` method, so emit `border: none;` only in that case.
+  const borderDecl = computeBorderDecl(borderWidth, borderColor, method);
+  const radiusDecl = borderRadius > 0 ? `\n  border-radius: ${borderRadius}px;` : '';
 
   const baseCSS = `.${baseClass} {
   cursor: pointer;
   display: block;
   width: ${width}px;
   height: ${width}px;
-  background: transparent;
-  border: none;
+  background: ${backgroundValue};${borderDecl}${radiusDecl}
   padding: 0;
 }
 
@@ -89,7 +138,7 @@ function generateCSS(
 
 .${baseClass} path {
   fill: none;
-  stroke: #ffffff;
+  stroke: ${strokeColor};
   stroke-width: ${strokeWidth};
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -105,6 +154,8 @@ ${paths
 }`
   )
   .join('\n')}`;
+
+  const perLineOverrides = generatePerLineOverrides(lines, styleConfig);
 
   // Add .svg-group transition when horizontal shift is active
   const groupCSS =
@@ -152,7 +203,18 @@ ${paths
   .join('\n')}${activeGroupCSS}
 }`;
 
-  return baseCSS + groupCSS + checkboxCSS + activeCSS;
+  return baseCSS + perLineOverrides + groupCSS + checkboxCSS + activeCSS;
+}
+
+function computeBorderDecl(borderWidth: number, borderColor: string, method: Method): string {
+  if (borderWidth > 0) {
+    return `\n  border: ${borderWidth}px solid ${borderColor};`;
+  }
+  // Reset default <button> border for the `class` method only.
+  if (method === 'class') {
+    return `\n  border: none;`;
+  }
+  return '';
 }
 
 function generateJS(method: Method, classNameConfig: ClassNameConfig): string {

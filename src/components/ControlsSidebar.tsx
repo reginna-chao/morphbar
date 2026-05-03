@@ -2,7 +2,8 @@ import { useCallback } from 'react';
 import SegmentedControl from './ui/SegmentedControl';
 import LineManager from './LineManager';
 import MirrorManager from './MirrorManager';
-import type { Mode, Lines, MirrorGroup, SizeConfig } from '@/types';
+import StylePanel from './StylePanel';
+import type { Mode, Lines, MirrorGroup, SizeConfig, StyleConfig } from '@/types';
 import styles from './ControlsSidebar.module.scss';
 import { Menu, X } from 'lucide-react';
 
@@ -11,10 +12,14 @@ interface ControlsSidebarProps {
   onModeChange: (mode: Mode) => void;
   lines: Lines;
   onLinesChange: (lines: Lines) => void;
+  // Metadata-only updater (color/strokeWidth). Skips mirror-sync.
+  onLinesMetaChange: (lines: Lines) => void;
   mirrorGroups: MirrorGroup[];
   onMirrorGroupsChange: (groups: MirrorGroup[]) => void;
   sizeConfig: SizeConfig;
   onSizeConfigChange: (config: SizeConfig) => void;
+  styleConfig: StyleConfig;
+  onStyleConfigChange: (config: StyleConfig) => void;
 }
 
 export default function ControlsSidebar({
@@ -22,10 +27,13 @@ export default function ControlsSidebar({
   onModeChange,
   lines,
   onLinesChange,
+  onLinesMetaChange,
   mirrorGroups,
   onMirrorGroupsChange,
   sizeConfig,
   onSizeConfigChange,
+  styleConfig,
+  onStyleConfigChange,
 }: ControlsSidebarProps) {
   const handleHorizontalShiftChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -60,6 +68,15 @@ export default function ControlsSidebar({
           ]}
           value={mode}
           onChange={onModeChange}
+        />
+      </div>
+
+      <div className={styles.controlGroup}>
+        <StylePanel
+          styleConfig={styleConfig}
+          onStyleConfigChange={onStyleConfigChange}
+          lines={lines}
+          onLinesChange={onLinesMetaChange}
         />
       </div>
 

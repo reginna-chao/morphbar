@@ -17,6 +17,7 @@ import type {
   Lines,
   ClassNameConfig,
   SizeConfig,
+  StyleConfig,
   MirrorGroup,
   LineIndex,
 } from '@/types';
@@ -29,6 +30,7 @@ import Preview from '@/components/Preview';
 // Initial State (Standard Hamburger -> Cross)
 const INITIAL_LINES: Lines = [
   {
+    id: 'line-init-1',
     menu: [
       { x: 20, y: 30, type: 'anchor' },
       { x: 80, y: 30, type: 'anchor' },
@@ -39,6 +41,7 @@ const INITIAL_LINES: Lines = [
     ],
   },
   {
+    id: 'line-init-2',
     menu: [
       { x: 20, y: 50, type: 'anchor' },
       { x: 80, y: 50, type: 'anchor' },
@@ -49,6 +52,7 @@ const INITIAL_LINES: Lines = [
     ], // Collapses to center
   },
   {
+    id: 'line-init-3',
     menu: [
       { x: 20, y: 70, type: 'anchor' },
       { x: 80, y: 70, type: 'anchor' },
@@ -73,8 +77,18 @@ function App() {
   });
   const [sizeConfig, setSizeConfig] = useState<SizeConfig>({
     width: 50,
-    strokeWidth: 3,
     horizontalShift: 0,
+  });
+  const [styleConfig, setStyleConfig] = useState<StyleConfig>({
+    strokeColor: '#ffffff',
+    strokeWidth: 3,
+    perLineColor: false,
+    perLineWidth: false,
+    backgroundColor: '#ffffff',
+    backgroundTransparent: true,
+    borderWidth: 0,
+    borderColor: '#000000',
+    borderRadius: 0,
   });
   const [mirrorGroups, setMirrorGroups] = useState<MirrorGroup[]>([]);
 
@@ -119,6 +133,13 @@ function App() {
     setLines((currentLines) => applyMirrorSync(currentLines, groups));
   }, []);
 
+  // Lightweight setter for pure metadata edits (color, strokeWidth) coming from
+  // the Style panel. Skips mirror-sync and mirror-group adjustment because
+  // metadata changes do not affect path geometry or line ordering.
+  const handleLinesMetaChange = useCallback((newLines: Lines) => {
+    setLines(newLines);
+  }, []);
+
   const handleReset = () => {
     setLines(structuredClone(INITIAL_LINES));
     setMirrorGroups([]);
@@ -136,7 +157,10 @@ function App() {
     return map;
   }, [mirrorGroups]);
 
-  const generatedCode = generateCode(lines, method, classNameConfig, sizeConfig);
+  const generatedCode = useMemo(
+    () => generateCode(lines, method, classNameConfig, sizeConfig, styleConfig),
+    [lines, method, classNameConfig, sizeConfig, styleConfig]
+  );
 
   return (
     <>
@@ -240,10 +264,13 @@ function App() {
             onModeChange={setMode}
             lines={lines}
             onLinesChange={handleLinesChange}
+            onLinesMetaChange={handleLinesMetaChange}
             mirrorGroups={mirrorGroups}
             onMirrorGroupsChange={handleMirrorGroupsChange}
             sizeConfig={sizeConfig}
             onSizeConfigChange={setSizeConfig}
+            styleConfig={styleConfig}
+            onStyleConfigChange={setStyleConfig}
           />
         ) : (
           <CodePanel
