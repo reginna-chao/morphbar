@@ -92,7 +92,7 @@ export default function LineManager({ lines, onLinesChange }: LineManagerProps) 
           const lineColor = getLineColor(index, line.color);
 
           return (
-            <div key={index} className={styles.lineItem}>
+            <div key={line.id} className={styles.lineItem}>
               <div className={styles.lineInfo}>
                 <div className={styles.colorIndicator} style={{ backgroundColor: lineColor }} />
                 <span className={styles.lineName}>Line {index + 1}</span>
@@ -116,12 +116,12 @@ export default function LineManager({ lines, onLinesChange }: LineManagerProps) 
                   </Button>
                   {activeSwapMenu === index && lines.length > 1 && (
                     <div className={styles.swapMenu}>
-                      {lines.map((_, targetIndex) => {
+                      {lines.map((targetLine, targetIndex) => {
                         if (targetIndex === index) return null;
-                        const targetColor = getLineColor(targetIndex, lines[targetIndex].color);
+                        const targetColor = getLineColor(targetIndex, targetLine.color);
                         return (
                           <button
-                            key={targetIndex}
+                            key={targetLine.id}
                             className={styles.swapMenuItem}
                             onClick={() => handleSwapLines(index, targetIndex)}
                           >

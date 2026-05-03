@@ -1,40 +1,60 @@
-import { useRef, useEffect } from 'react';
-import type { Method } from '../types';
+import { useRef, useEffect, type CSSProperties, type ReactElement } from 'react';
+import type { ClassNameConfig, Method } from '@/types';
 import styles from './Preview.module.scss';
 
 interface PreviewProps {
   html: string;
   css: string;
   method: Method;
+  classNameConfig: ClassNameConfig;
+  background: string;
+  borderColor: string;
 }
 
-export default function Preview({ html, css, method }: PreviewProps) {
+export default function Preview({
+  html,
+  css,
+  method,
+  classNameConfig,
+  background,
+  borderColor,
+}: PreviewProps): ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
+  const { baseClass, activeClass } = classNameConfig;
 
+  // Effect 1: inject html + css. Re-runs only when the generated markup changes.
   useEffect(() => {
     if (!containerRef.current) return;
-
-    // Update Preview
     containerRef.current.innerHTML = html;
     const styleEl = document.createElement('style');
     styleEl.textContent = css;
     containerRef.current.appendChild(styleEl);
+  }, [html, css]);
 
-    // For preview interaction in Class mode, we need to add the event listener
-    if (method === 'class') {
-      const menu = containerRef.current.querySelector('.hamburger-menu');
-      if (menu) {
-        const handleClick = () => {
-          menu.classList.toggle('is-active');
-        };
-        menu.addEventListener('click', handleClick);
+  // Effect 2: attach class-mode click handler. `html` is in deps because the
+  // innerHTML reset above wipes the previously queried element, so the
+  // listener must re-attach on the freshly injected node.
+  useEffect(() => {
+    if (method !== 'class' || !containerRef.current) return;
+    const menu = containerRef.current.querySelector(`.${baseClass}`);
+    if (!menu) return;
+    const handleClick = (): void => {
+      menu.classList.toggle(activeClass);
+    };
+    menu.addEventListener('click', handleClick);
+    return () => {
+      menu.removeEventListener('click', handleClick);
+    };
+  }, [method, baseClass, activeClass, html]);
 
-        return () => {
-          menu.removeEventListener('click', handleClick);
-        };
-      }
-    }
-  }, [html, css, method]);
+  const themeStyle = {
+    '--preview-bg': background,
+    '--preview-border': borderColor,
+  } as CSSProperties;
 
-  return <div ref={containerRef} className={styles.previewBox} id="preview-container" />;
+  return (
+    <div className={styles.previewBox} style={themeStyle} id="preview-container-wrapper">
+      <div ref={containerRef} id="preview-container" />
+    </div>
+  );
 }

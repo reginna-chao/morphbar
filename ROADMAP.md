@@ -115,9 +115,9 @@ MorphBar 是一個漢堡選單圖示動畫生成器，允許使用者視覺化�
 | 3    | 鏡射（水平/垂直）            | ⭐⭐⭐       | Medium | ✅ 完成 |
 | 6    | Menu/Close 水平移動距離      | ⭐⭐⭐       | Low    | ✅ 完成 |
 | 2    | 快速調整 Hamburger 間距      | ⭐⭐⭐       | Low    | 🤔 需討論 |
-| 13   | Preview 區塊（不同顏色預覽） | ⭐⭐⭐⭐     | Medium | 📝 待開發 |
+| 13   | Preview 區塊（不同顏色預覽） | ⭐⭐⭐⭐     | Medium | ✅ 完成 |
 | 5    | 對齊輔助線                   | ⭐⭐⭐⭐⭐   | High   | ✅ 完成 |
-| 11   | Style Panel（樣式設定）      | ⭐⭐⭐⭐⭐   | High   | 📝 待開發 |
+| 11   | Style Panel（樣式設定）      | ⭐⭐⭐⭐⭐   | High   | ✅ 完成 |
 | 7    | 框選複數點移動               | ⭐⭐⭐⭐⭐⭐ | Medium | 📝 待開發 |
 
 #### 功能細節
@@ -407,19 +407,26 @@ MorphBar 是一個漢堡選單圖示動畫生成器，允許使用者視覺化�
 
 ---
 
-### Sprint 3：樣式自訂系統 🎨
+### Sprint 3：樣式自訂系統 🎨 ✅ (已完成)
 
 **目標**：讓使用者自訂視覺樣式
 
-- [ ] 功能 #11：Style Panel
-  - [ ] 11.1 線段顏色、粗細
-  - [ ] 11.2 背景色
-  - [ ] 11.3 外框設定
-- [ ] 功能 #13：Preview 區塊
+- [x] Animation Settings (Horizontal Shift) 移至 Design Panel
+- [x] 功能 #11：Style Panel
+  - [x] 11.1 線段顏色、粗細（全域 + per-line override toggle）
+  - [x] 11.2 背景色（含 Transparent toggle）
+  - [x] 11.3 外框設定（width / color / radius）
+- [x] 功能 #13：Preview 區塊
+  - [x] 主題切換（Dark / Light / Custom）
+  - [x] 修復 `.preview-svg path` 全域樣式覆寫 bug
+  - [x] 修復 className 寫死 bug（class mode 動態 selector）
+  - [x] 抽出 FloatingPreview 元件
 
-**預估時間**：3-4 天
-**風險**：中高（需改架構）
-**架構變更**：新增 `style` 欄位到 `LineState`
+**實際完成時間**：Sprint 3 完成
+**架構變更**：
+- 新增 `StyleConfig` 型別、`LineState` 加 `id` / `strokeWidth?`
+- 新增 `PreviewThemeConfig` 型別、`utils/previewTheme.ts` 單一真相
+- `SizeConfig` 移除 `strokeWidth`（搬至 `StyleConfig`）
 
 ---
 
@@ -463,15 +470,15 @@ MorphBar 是一個漢堡選單圖示動畫生成器，允許使用者視覺化�
 - [ ] 允許 menu/close 有不同點數嗎？
 - [ ] 支援的曲線類型？
 
-### 3. 功能 #11：Style Panel
+### 3. 功能 #11：Style Panel ✅ 已決策
 
-- [ ] 樣式是「全域」還是「每條線獨立」？
-- [ ] 需要支援漸變色嗎？
+- [x] 樣式是「全域」還是「每條線獨立」？ → **預設全域，checkbox 控制是否 per-line override**
+- [ ] 需要支援漸變色嗎？ → 暫緩，未列入 Sprint 3
 
-### 4. 功能 #13：Preview 位置
+### 4. 功能 #13：Preview 位置 ✅ 已決策
 
-- [ ] Preview 要獨立面板還是整合到現有面板？
-- [ ] 需要多少預設主題？
+- [x] Preview 要獨立面板還是整合到現有面板？ → **保留浮動 Preview，不另開面板**
+- [x] 需要多少預設主題？ → **三種：Dark / Light / Custom（自選色）**
 
 ---
 
@@ -539,11 +546,20 @@ src/
 - ✅ Code 輸出大小設定
 - ✅ Preview 移至 EditorCanvas 浮動顯示
 
-### v1.3.0 (規劃中) - 編輯體驗優化
+### v1.3.0 - 編輯體驗優化 ✅
 
-- Sprint 2 功能
-- 對齊輔助線
-- 樣式自訂面板
+- ✅ Sprint 2 功能全部完成
+- ✅ 對齊輔助線
+- ✅ 鏡射管理系統（MirrorManager）
+- ✅ 動畫水平位移效果（Horizontal Shift）
+
+### v1.4.0 (規劃中) - 樣式自訂系統
+
+- Sprint 3 功能
+- Animation Settings 移至 Design Panel
+- Style Panel（線段顏色/粗細、背景、外框）
+- Preview 主題切換（Dark / Light / Custom）
+- FloatingPreview 元件抽出
 
 ---
 
@@ -555,5 +571,5 @@ src/
 
 ---
 
-**最後更新**：2025-11-30
+**最後更新**：2026-05-03
 **維護者**：@reginna-chao

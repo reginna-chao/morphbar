@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.4.0] - 2026-05-03
+
+### Added
+
+- **Style Panel** (#11)
+  - 11.1 Per-line stroke color and width with global ↔ per-line override toggles (auto-seeds per-line values from global on toggle)
+  - 11.2 Background color with Transparent toggle
+  - 11.3 Border settings (width / color / radius)
+  - Settings flow into both Live Preview and generated CSS output
+
+- **Preview Theme Switcher** (#13)
+  - Three circular swatches (Dark / Light / Custom) for the floating preview backdrop
+  - Custom swatch single-click selects theme + opens native color picker
+  - Keyboard-accessible: real `<button>` elements with `aria-pressed` and `:focus-visible` ring
+  - `previewTheme.ts` as the single source of truth for theme colors
+
+- **Stable Line IDs**
+  - `LineState` gained a required `id` field for stable React keys across line swaps
+
+### Changed
+
+- **Animation Settings (Horizontal Shift)** moved from Code Panel → Design Panel (it controls animation behavior, not code output)
+- **Floating Preview** extracted from `App.tsx` into a dedicated `FloatingPreview` component (~36 lines of inline-style soup eliminated)
+- **`SizeConfig.strokeWidth`** moved into `StyleConfig` (semantically a style, not a size)
+- **`generateCode`** now memoized in `App.tsx` to avoid regenerating on unrelated re-renders
+- **Per-line edits** bypass mirror-sync pipeline via a new `handleLinesMetaChange` path
+
+### Fixed
+
+- **Preview SVG stroke override** — Removed dead `:global(.preview-svg path)` SCSS rule that hardcoded `stroke: #fff; stroke-width: 3`, conflicting with the new Style Panel stroke settings
+- **Preview class-mode click handler** — Previously hardcoded `.hamburger-menu` / `is-active`; now respects `classNameConfig.baseClass` / `classNameConfig.activeClass`
+
+---
+
 ## [1.3.0] - 2026-04-08
 
 ### Added

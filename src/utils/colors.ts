@@ -1,3 +1,5 @@
+import type { LineState } from '@/types';
+
 // Default color palette for lines (up to 10)
 export const DEFAULT_LINE_COLORS = [
   '#ff6b6b', // Red
@@ -17,11 +19,9 @@ export function getLineColor(index: number, customColor?: string): string {
   return DEFAULT_LINE_COLORS[index % DEFAULT_LINE_COLORS.length];
 }
 
-export function createDefaultLine(): {
-  menu: { x: number; y: number; type: 'anchor' | 'control' }[];
-  close: { x: number; y: number; type: 'anchor' | 'control' }[];
-} {
+export function createDefaultLine(): LineState {
   return {
+    id: crypto.randomUUID(),
     menu: [
       { x: 20, y: 50, type: 'anchor' },
       { x: 80, y: 50, type: 'anchor' },

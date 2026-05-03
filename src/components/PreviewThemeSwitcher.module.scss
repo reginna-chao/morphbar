@@ -1,0 +1,62 @@
+.switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.swatch {
+  @include button-base;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  padding: 0;
+  border: 1px solid rgba(127, 127, 127, 0.4);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+
+  &:hover {
+    transform: scale(1.08);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  // Keyboard focus parity with the active state ring.
+  &:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--surface-color),
+      0 0 0 4px var(--primary-color);
+  }
+}
+
+// White swatch needs a slightly stronger border to remain visible against
+// light surface backgrounds.
+.swatchLight {
+  border-color: rgba(127, 127, 127, 0.55);
+}
+
+.active {
+  // 2px gap (surface ring) then 2px primary ring around the swatch.
+  box-shadow:
+    0 0 0 2px var(--surface-color),
+    0 0 0 4px var(--primary-color);
+}
+
+// Hidden but programmatically clickable native color input. Kept out of
+// the tab order; the wrapping <button> is the only focusable affordance.
+.hiddenColorInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: none;
+  padding: 0;
+  pointer-events: none;
+}
