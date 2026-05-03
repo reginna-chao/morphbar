@@ -20,12 +20,13 @@ import type {
   StyleConfig,
   MirrorGroup,
   LineIndex,
+  PreviewThemeConfig,
 } from '@/types';
 import '@/styles/global.scss';
 import logoLight from '@/assets/images/logomark-light.svg';
 import logoDark from '@/assets/images/logomark-dark.svg';
 import { Code, SplinePointer } from 'lucide-react';
-import Preview from '@/components/Preview';
+import FloatingPreview from '@/components/FloatingPreview';
 
 // Initial State (Standard Hamburger -> Cross)
 const INITIAL_LINES: Lines = [
@@ -91,6 +92,10 @@ function App() {
     borderRadius: 0,
   });
   const [mirrorGroups, setMirrorGroups] = useState<MirrorGroup[]>([]);
+  const [previewThemeConfig, setPreviewThemeConfig] = useState<PreviewThemeConfig>({
+    theme: 'dark',
+    customColor: '#888888',
+  });
 
   const handleLinesChange = useCallback(
     (newLines: Lines) => {
@@ -220,42 +225,14 @@ function App() {
             mirrorTargetMap={mirrorTargetMap}
           />
 
-          <div
-            style={{
-              position: 'absolute',
-              right: '20px',
-              bottom: '20px',
-              zIndex: 10,
-              background: 'var(--surface-color)',
-              border: '1px solid var(--border-color)',
-              borderRadius: '12px',
-              padding: '1rem',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
-            }}
-          >
-            <h2
-              style={{
-                margin: '0 0 0.75rem 0',
-                fontSize: '0.9rem',
-                textTransform: 'uppercase',
-                letterSpacing: '1px',
-                color: 'var(--text-secondary)',
-              }}
-            >
-              Live Preview
-            </h2>
-            <Preview html={generatedCode.html} css={generatedCode.css} method={method} />
-            <div
-              style={{
-                marginTop: '0.5rem',
-                textAlign: 'center',
-                fontSize: '0.8rem',
-                color: 'var(--text-secondary)',
-              }}
-            >
-              Click to animate
-            </div>
-          </div>
+          <FloatingPreview
+            html={generatedCode.html}
+            css={generatedCode.css}
+            method={method}
+            classNameConfig={classNameConfig}
+            themeConfig={previewThemeConfig}
+            onThemeConfigChange={setPreviewThemeConfig}
+          />
         </div>
 
         {activePanel === 'design' ? (

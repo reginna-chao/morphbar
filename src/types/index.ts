@@ -88,3 +88,11 @@ export interface AlignmentGuide {
 
 // Tool types
 export type Tool = 'select' | 'pen-add' | 'pen-remove';
+
+// Preview theme types
+export type PreviewTheme = 'dark' | 'light' | 'custom';
+
+export interface PreviewThemeConfig {
+  theme: PreviewTheme;
+  customColor: string; // hex, used when theme === 'custom'
+}

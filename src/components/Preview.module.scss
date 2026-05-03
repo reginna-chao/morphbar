@@ -1,19 +1,11 @@
 .previewBox {
-  background: #1a1a1a;
-  border: 1px solid #333;
+  background: var(--preview-bg, #1a1a1a);
+  border: 1px solid var(--preview-border, transparent);
   border-radius: 12px;
   padding: 1rem 2rem;
   @include flex-center;
   min-height: 150px;
-  transition: background 0.3s;
-}
-
-// Styles for the generated preview SVG
-:global(.preview-svg path) {
-  fill: none;
-  stroke: $white;
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transition: all 0.8s cubic-bezier(0.645, 0.045, 0.355, 1);
+  transition:
+    background 0.3s,
+    border-color 0.3s;
 }
