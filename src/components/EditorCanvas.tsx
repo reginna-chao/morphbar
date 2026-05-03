@@ -3,11 +3,11 @@ import { toast } from 'react-toastify';
 import Button from './ui/Button';
 import Toolbar from './Toolbar';
 import GuidesLayer from './GuidesLayer';
-import { getLineColor } from '@/utils/colors';
 import { toastOptions } from '@/config/toast';
 import { useAlignmentGuides } from '@/hooks/useAlignmentGuides';
 import { useBoxSelection, makeKey, parseKey } from '@/hooks/useBoxSelection';
-import type { Mode, LineState, DraggedPoint, Tool, PathPoint, LineIndex } from '@/types';
+import { useCanvasRender } from '@/hooks/useCanvasRender';
+import type { Mode, LineState, DraggedPoint, Tool, LineIndex } from '@/types';
 import styles from './EditorCanvas.module.scss';
 import { RotateCw } from 'lucide-react';
 
@@ -83,6 +83,7 @@ export default function EditorCanvas({
     selectSingle,
     toggleSelection,
     clearSelection,
+    pruneSelection,
     startMarquee,
     updateMarquee,
     endMarquee,
@@ -95,27 +96,37 @@ export default function EditorCanvas({
     draggedPoints
   );
 
-  // Refs for marquee handler closure — avoid re-binding listeners every frame
+  // Refs let drag/marquee handlers stay stable so window listeners aren't
+  // rebound on every render (e.g. every move during a drag updates `lines`).
   const linesRef = useRef(lines);
   const modeRef = useRef(mode);
   const mirrorTargetMapRef = useRef(mirrorTargetMap);
+  const draggedPointsRef = useRef<DraggedPoint[]>([]);
+  const onLinesChangeRef = useRef(onLinesChange);
   const marqueeAdditiveRef = useRef(false);
   useEffect(() => {
     linesRef.current = lines;
     modeRef.current = mode;
     mirrorTargetMapRef.current = mirrorTargetMap;
-  }, [lines, mode, mirrorTargetMap]);
+    onLinesChangeRef.current = onLinesChange;
+  }, [lines, mode, mirrorTargetMap, onLinesChange]);
+  useEffect(() => {
+    draggedPointsRef.current = draggedPoints;
+  }, [draggedPoints]);
 
-  // Clear selection on mode change, tool leaves 'select', or line count change
+  // Clear selection on mode change or when leaving the Select tool.
   useEffect(() => {
     clearSelection();
   }, [mode, clearSelection]);
   useEffect(() => {
     if (activeTool !== 'select') clearSelection();
   }, [activeTool, clearSelection]);
+  // When lines/mirror targets change (e.g. line removed, anchor deleted,
+  // mirror group toggled), drop only entries that no longer reference a
+  // valid anchor — keep selections that still point at real points.
   useEffect(() => {
-    clearSelection();
-  }, [lines.length, clearSelection]);
+    pruneSelection(lines, mode, mirrorTargetMap);
+  }, [lines, mode, mirrorTargetMap, pruneSelection]);
 
   // Esc clears selection (Select tool only)
   useEffect(() => {
@@ -129,206 +140,22 @@ export default function EditorCanvas({
     return () => window.removeEventListener('keydown', onKey);
   }, [activeTool, clearSelection, cancelMarquee]);
 
-  // Render paths and controls
-  useEffect(() => {
-    if (!svgRef.current) return;
-
-    const activeLayer = activeLayerRef.current;
-    const ghostLayer = ghostLayerRef.current;
-    const controlsLayer = controlsLayerRef.current;
-    const connectionLayer = connectionLayerRef.current;
-
-    if (!activeLayer || !ghostLayer || !controlsLayer || !connectionLayer) return;
-
-    while (activeLayer.firstChild) activeLayer.removeChild(activeLayer.firstChild);
-    while (ghostLayer.firstChild) ghostLayer.removeChild(ghostLayer.firstChild);
-    while (controlsLayer.firstChild) controlsLayer.removeChild(controlsLayer.firstChild);
-    while (connectionLayer.firstChild) connectionLayer.removeChild(connectionLayer.firstChild);
-
-    const generatePathD = (points: PathPoint[]) => {
-      const anchors = points.filter((p) => p.type === 'anchor');
-      if (anchors.length < 2) return '';
-
-      const commands = [`M ${anchors[0].x} ${anchors[0].y}`];
-      for (let i = 1; i < anchors.length; i++) {
-        commands.push(`L ${anchors[i].x} ${anchors[i].y}`);
-      }
-      return commands.join(' ');
-    };
-
-    lines.forEach((line, index) => {
-      const activePoints = line[mode];
-      const ghostPoints = line[mode === 'menu' ? 'close' : 'menu'];
-      const isMirrorTarget = mirrorTargetMap.has(index);
-      const sourceLineIndex = mirrorTargetMap.get(index);
-
-      const ghostPathD = generatePathD(ghostPoints);
-      if (ghostPathD) {
-        const ghostPath = document.createElementNS(SVG_NS, 'path');
-        ghostPath.setAttribute('d', ghostPathD);
-        ghostPath.classList.add(styles.ghostPath);
-        ghostLayer.appendChild(ghostPath);
-      }
-
-      const lineColor = getLineColor(index, line.color);
-      const activePathD = generatePathD(activePoints);
-      if (activePathD) {
-        const activePath = document.createElementNS(SVG_NS, 'path');
-        activePath.setAttribute('d', activePathD);
-        activePath.dataset.lineIndex = index.toString();
-
-        if (isMirrorTarget && sourceLineIndex !== undefined) {
-          const sourceColor = getLineColor(sourceLineIndex, lines[sourceLineIndex]?.color);
-          activePath.classList.add(styles.editorPath);
-          activePath.classList.add(styles.mirrorTargetPath);
-          activePath.setAttribute('stroke', sourceColor);
-        } else {
-          activePath.classList.add(styles.editorPath);
-          activePath.setAttribute('stroke', lineColor);
-        }
-        activeLayer.appendChild(activePath);
-      }
-
-      activePoints.forEach((point, pointIndex) => {
-        if (point.type === 'anchor') {
-          const circle = document.createElementNS(SVG_NS, 'circle');
-          circle.setAttribute('cx', point.x.toString());
-          circle.setAttribute('cy', point.y.toString());
-          circle.setAttribute('r', '6');
-          circle.dataset.lineIndex = index.toString();
-          circle.dataset.pointIndex = pointIndex.toString();
-
-          if (isMirrorTarget && sourceLineIndex !== undefined) {
-            const sourceColor = getLineColor(sourceLineIndex, lines[sourceLineIndex]?.color);
-            circle.classList.add(styles.controlPoint);
-            circle.classList.add(styles.mirrorTargetPoint);
-            circle.setAttribute('fill', 'transparent');
-            circle.setAttribute('stroke', sourceColor);
-          } else {
-            circle.classList.add(styles.controlPoint);
-            circle.setAttribute('fill', lineColor);
-
-            if (isSelected(index, pointIndex)) {
-              circle.classList.add(styles.selectedPoint);
-            }
-          }
-
-          controlsLayer.appendChild(circle);
-
-          if (
-            !isMirrorTarget &&
-            activeTool === 'pen-remove' &&
-            hoveredPoint &&
-            hoveredPoint.lineIndex === index &&
-            hoveredPoint.pointIndex === pointIndex
-          ) {
-            const anchors = activePoints.filter((p) => p.type === 'anchor');
-            if (anchors.length > 2) {
-              const minusIcon = document.createElementNS(SVG_NS, 'path');
-              const size = 3;
-              minusIcon.setAttribute(
-                'd',
-                `M ${point.x - size} ${point.y} L ${point.x + size} ${point.y}`
-              );
-              minusIcon.classList.add(styles.penRemoveIcon);
-              controlsLayer.appendChild(minusIcon);
-            }
-          }
-        }
-      });
-    });
-
-    if (hoveredPoint !== null && hoveredPoint.lineIndex < lines.length) {
-      const { lineIndex, pointIndex, isHeadOrTail } = hoveredPoint;
-      const oppositeMode = mode === 'menu' ? 'close' : 'menu';
-      const correspondingPoints = lines[lineIndex][oppositeMode];
-
-      const activePoint = lines[lineIndex]?.[mode]?.[pointIndex];
-      if (!activePoint) return;
-
-      const correspondingPathD = generatePathD(correspondingPoints);
-      if (correspondingPathD) {
-        const highlightPath = document.createElementNS(SVG_NS, 'path');
-        highlightPath.setAttribute('d', correspondingPathD);
-        highlightPath.classList.add(styles.highlightedPath);
-        connectionLayer.appendChild(highlightPath);
-      }
-
-      if (isHeadOrTail) {
-        const currentAnchorIndices = lines[lineIndex][mode]
-          .map((p, i) => (p.type === 'anchor' ? i : -1))
-          .filter((i) => i !== -1);
-        const oppositeAnchorIndices = correspondingPoints
-          .map((p, i) => (p.type === 'anchor' ? i : -1))
-          .filter((i) => i !== -1);
-
-        const isHead = pointIndex === currentAnchorIndices[0];
-        const correspondingPointIndex = isHead
-          ? oppositeAnchorIndices[0]
-          : oppositeAnchorIndices[oppositeAnchorIndices.length - 1];
-        const correspondingPoint = correspondingPoints[correspondingPointIndex];
-
-        const connectionLine = document.createElementNS(SVG_NS, 'line');
-        connectionLine.setAttribute('x1', activePoint.x.toString());
-        connectionLine.setAttribute('y1', activePoint.y.toString());
-        connectionLine.setAttribute('x2', correspondingPoint.x.toString());
-        connectionLine.setAttribute('y2', correspondingPoint.y.toString());
-        connectionLine.classList.add(styles.connectionLine);
-        connectionLayer.appendChild(connectionLine);
-
-        const correspondingCircle = document.createElementNS(SVG_NS, 'circle');
-        correspondingCircle.setAttribute('cx', correspondingPoint.x.toString());
-        correspondingCircle.setAttribute('cy', correspondingPoint.y.toString());
-        correspondingCircle.setAttribute('r', '6');
-        correspondingCircle.setAttribute(
-          'style',
-          `transform-origin: ${correspondingPoint.x}px ${correspondingPoint.y}px;`
-        );
-        correspondingCircle.classList.add(styles.correspondingPoint);
-        connectionLayer.appendChild(correspondingCircle);
-      }
-    }
-
-    if (
-      penAddPreview !== null &&
-      activeTool === 'pen-add' &&
-      penAddPreview.lineIndex < lines.length
-    ) {
-      const previewCircle = document.createElementNS(SVG_NS, 'circle');
-      previewCircle.setAttribute('cx', penAddPreview.x.toString());
-      previewCircle.setAttribute('cy', penAddPreview.y.toString());
-      previewCircle.setAttribute('r', '4.8');
-      previewCircle.classList.add(styles.penAddPreview);
-      previewCircle.dataset.lineIndex = penAddPreview.lineIndex.toString();
-      const previewColor = getLineColor(
-        penAddPreview.lineIndex,
-        lines[penAddPreview.lineIndex]?.color
-      );
-      previewCircle.setAttribute('fill', previewColor);
-      previewCircle.setAttribute('stroke', previewColor);
-      connectionLayer.appendChild(previewCircle);
-
-      const plusIcon = document.createElementNS(SVG_NS, 'path');
-      const size = 2.5;
-      const cx = penAddPreview.x;
-      const cy = penAddPreview.y;
-      plusIcon.setAttribute(
-        'd',
-        `M ${cx} ${cy - size} L ${cx} ${cy + size} M ${cx - size} ${cy} L ${cx + size} ${cy}`
-      );
-      plusIcon.classList.add(styles.penAddPreviewIcon);
-      connectionLayer.appendChild(plusIcon);
-    }
-  }, [
+  useCanvasRender({
+    layers: {
+      active: activeLayerRef,
+      ghost: ghostLayerRef,
+      controls: controlsLayerRef,
+      connection: connectionLayerRef,
+    },
     lines,
     mode,
+    mirrorTargetMap,
     hoveredPoint,
     penAddPreview,
     activeTool,
-    selectedPoints,
-    mirrorTargetMap,
     isSelected,
-  ]);
+    styles,
+  });
 
   // Render marquee rectangle
   useEffect(() => {
@@ -473,9 +300,10 @@ export default function EditorCanvas({
 
           if (isHead) {
             newLines[lineIndex][mode].unshift({ x, y, type: 'anchor' });
-            // selection cleared by lines.length effect, then re-set below
+            selectSingle(lineIndex, 0);
           } else {
             newLines[lineIndex][mode].push({ x, y, type: 'anchor' });
+            selectSingle(lineIndex, newLines[lineIndex][mode].length - 1);
           }
           onLinesChange(newLines);
           return;
@@ -617,9 +445,12 @@ export default function EditorCanvas({
     setShowCrosshairCursor(false);
   };
 
-  // Multi-point drag: compute delta from anchor, apply to all dragged points
+  // Multi-point drag: compute delta from anchor, apply to all dragged points.
+  // Reads mutable inputs (lines, dragged set, callback) via refs so the
+  // listener bound below doesn't have to be torn down on every move.
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
+      const draggedPoints = draggedPointsRef.current;
       if (draggedPoints.length === 0) return;
       const anchorKey = anchorKeyRef.current;
       if (!anchorKey) return;
@@ -652,7 +483,6 @@ export default function EditorCanvas({
       const dx = x - anchor.originX;
       const dy = y - anchor.originY;
 
-      // Build line→(pointIndex→origin) lookup once per move
       const updatesByLine = new Map<number, Map<number, DraggedPoint>>();
       for (const d of draggedPoints) {
         let inner = updatesByLine.get(d.lineIndex);
@@ -663,6 +493,8 @@ export default function EditorCanvas({
         inner.set(d.pointIndex, d);
       }
 
+      const lines = linesRef.current;
+      const mode = modeRef.current;
       const newLines = lines.map((line, i) => {
         const inner = updatesByLine.get(i);
         if (!inner) return line;
@@ -674,9 +506,9 @@ export default function EditorCanvas({
           }),
         };
       });
-      onLinesChange(newLines);
+      onLinesChangeRef.current(newLines);
     },
-    [draggedPoints, lines, mode, onLinesChange, computeSnap, setActiveGuides]
+    [computeSnap, setActiveGuides]
   );
 
   const handleMouseUp = useCallback(() => {
@@ -731,6 +563,8 @@ export default function EditorCanvas({
         ref={svgRef}
         className={`${styles.editorSvg} ${showCrosshairCursor ? styles.cursorCrosshair : ''}`}
         viewBox="0 0 100 100"
+        role="application"
+        aria-label="Path editor canvas. Drag points to move them. Drag empty area to box-select. Press Escape to clear selection."
         onMouseDown={handleMouseDown}
         onMouseOver={handleMouseOver}
         onMouseOut={handleMouseOut}

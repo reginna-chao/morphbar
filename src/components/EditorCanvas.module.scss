@@ -65,8 +65,8 @@
 }
 
 .marqueeRect {
-  fill: rgba(100, 150, 255, 0.15);
-  stroke: rgba(100, 150, 255, 0.8);
+  fill: var(--marquee-fill);
+  stroke: var(--marquee-stroke);
   stroke-width: 1;
   stroke-dasharray: 3, 2;
   vector-effect: non-scaling-stroke;

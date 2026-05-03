@@ -33,6 +33,11 @@ interface UseBoxSelectionResult {
   selectSingle: (lineIndex: number, pointIndex: number) => void;
   toggleSelection: (lineIndex: number, pointIndex: number) => void;
   clearSelection: () => void;
+  pruneSelection: (
+    lines: LineState[],
+    mode: Mode,
+    mirrorTargetMap: Map<LineIndex, LineIndex>
+  ) => void;
   startMarquee: (x: number, y: number) => void;
   updateMarquee: (x: number, y: number) => void;
   endMarquee: (
@@ -42,7 +47,6 @@ interface UseBoxSelectionResult {
     additive: boolean
   ) => void;
   cancelMarquee: () => void;
-  getSelectedKeys: () => SelectedPointKey[];
 }
 
 const MIN_MARQUEE_SIZE = 1;
@@ -74,6 +78,33 @@ export function useBoxSelection(): UseBoxSelectionResult {
   const clearSelection = useCallback(() => {
     setSelectedPoints(new Set());
   }, []);
+
+  // Drop selection entries that no longer reference a valid anchor (e.g. after
+  // pen-remove deletes a point, or a line is removed). Keeps the rest intact.
+  const pruneSelection = useCallback(
+    (lines: LineState[], mode: Mode, mirrorTargetMap: Map<LineIndex, LineIndex>) => {
+      setSelectedPoints((prev) => {
+        if (prev.size === 0) return prev;
+        let changed = false;
+        const next = new Set<SelectedPointKey>();
+        prev.forEach((key) => {
+          const { lineIndex, pointIndex } = parseKey(key);
+          if (mirrorTargetMap.has(lineIndex)) {
+            changed = true;
+            return;
+          }
+          const point = lines[lineIndex]?.[mode]?.[pointIndex];
+          if (point && point.type === 'anchor') {
+            next.add(key);
+          } else {
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+    },
+    []
+  );
 
   const startMarquee = useCallback((x: number, y: number) => {
     setMarqueeRect({ x1: x, y1: y, x2: x, y2: y });
@@ -130,11 +161,6 @@ export function useBoxSelection(): UseBoxSelectionResult {
     []
   );
 
-  const getSelectedKeys = useCallback(
-    (): SelectedPointKey[] => Array.from(selectedPoints),
-    [selectedPoints]
-  );
-
   return useMemo(
     () => ({
       selectedPoints,
@@ -143,11 +169,11 @@ export function useBoxSelection(): UseBoxSelectionResult {
       selectSingle,
       toggleSelection,
       clearSelection,
+      pruneSelection,
       startMarquee,
       updateMarquee,
       endMarquee,
       cancelMarquee,
-      getSelectedKeys,
     }),
     [
       selectedPoints,
@@ -156,11 +182,11 @@ export function useBoxSelection(): UseBoxSelectionResult {
       selectSingle,
       toggleSelection,
       clearSelection,
+      pruneSelection,
       startMarquee,
       updateMarquee,
       endMarquee,
       cancelMarquee,
-      getSelectedKeys,
     ]
   );
 }
