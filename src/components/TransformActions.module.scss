@@ -1,0 +1,95 @@
+@use '@/styles/variables.scss' as *;
+
+.panel {
+  position: absolute;
+  top: 80px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--input-bg);
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  z-index: 10;
+}
+
+.actionButton {
+  @include flex-center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background: var(--surface-color);
+    color: var(--text-color);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--selection-color);
+    outline-offset: 2px;
+  }
+}
+
+.divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-color);
+  margin: 0 2px;
+}
+
+.angleInput {
+  width: 56px;
+  height: 28px;
+  padding: 0 6px;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-color);
+  font-size: 13px;
+
+  &:focus-visible {
+    outline: 2px solid var(--selection-color);
+    outline-offset: 1px;
+    border-color: var(--selection-color);
+  }
+}
+
+.degSymbol {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-left: -2px;
+}
+
+.applyButton {
+  height: 28px;
+  padding: 0 10px;
+  background: var(--selection-color);
+  color: $white;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: filter 0.15s;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $white;
+    outline-offset: 2px;
+  }
+}

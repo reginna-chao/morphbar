@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import Button from './ui/Button';
 import Toolbar from './Toolbar';
+import TransformActions from './TransformActions';
 import GuidesLayer from './GuidesLayer';
 import SelectionBox from './SelectionBox';
 import { toastOptions } from '@/config/toast';
@@ -12,7 +13,11 @@ import { useLineSelection } from '@/hooks/useLineSelection';
 import { useRotateInteraction } from '@/hooks/useRotateInteraction';
 import { useScaleInteraction } from '@/hooks/useScaleInteraction';
 import { useTranslateInteraction } from '@/hooks/useTranslateInteraction';
-import { computeMultiLineBoundingBox, snapPivotToBoundingBox } from '@/utils/geometry';
+import {
+  computeMultiLineBoundingBox,
+  rotateLinesAroundPivot,
+  snapPivotToBoundingBox,
+} from '@/utils/geometry';
 import type { Mode, LineState, DraggedPoint, Tool, LineIndex, Point } from '@/types';
 import styles from './EditorCanvas.module.scss';
 import { RotateCw } from 'lucide-react';
@@ -187,6 +192,43 @@ export default function EditorCanvas({
     onCommit,
     getSVGPoint,
   });
+
+  const handleRotateSelection = useCallback(
+    (deg: number) => {
+      if (selectedLines.size === 0 || deg === 0) return;
+      if (
+        rotateState.isRotating ||
+        translateState.isTranslating ||
+        scaleState.isScaling ||
+        draggedPoints.length > 0
+      ) {
+        return;
+      }
+      const next = rotateLinesAroundPivot(
+        lines,
+        selectedLines,
+        sourceIndices,
+        mode,
+        deg,
+        effectivePivot
+      );
+      onLinesChange(next);
+      onCommit();
+    },
+    [
+      lines,
+      selectedLines,
+      sourceIndices,
+      mode,
+      effectivePivot,
+      onLinesChange,
+      onCommit,
+      rotateState.isRotating,
+      translateState.isTranslating,
+      scaleState.isScaling,
+      draggedPoints.length,
+    ]
+  );
 
   // Refs let drag/marquee handlers stay stable so window listeners aren't
   // rebound on every render (e.g. every move during a drag updates `lines`).
@@ -795,6 +837,17 @@ export default function EditorCanvas({
   return (
     <div className={styles.editorArea}>
       <Toolbar activeTool={activeTool} onToolChange={setActiveTool} />
+      <TransformActions
+        activeTool={activeTool}
+        selectedCount={selectedLines.size}
+        onRotate={handleRotateSelection}
+        disabled={
+          rotateState.isRotating ||
+          translateState.isTranslating ||
+          scaleState.isScaling ||
+          draggedPoints.length > 0
+        }
+      />
       <svg
         ref={svgRef}
         className={`${styles.editorSvg} ${showCrosshairCursor ? styles.cursorCrosshair : ''}`}

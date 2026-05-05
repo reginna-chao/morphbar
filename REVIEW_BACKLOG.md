@@ -186,6 +186,46 @@
 
 ---
 
+---
+
+## 來源：Sprint 5.5 Code Review（2026-05-06）
+
+### 🟡 低優先 / UX polish — 暫緩
+
+#### B20. Apply 後輸入框被清空，無法快速重複套用同角度
+
+- **來源**：Sprint 5.5 SUGGESTION
+- **位置**：[src/components/TransformActions.tsx](src/components/TransformActions.tsx) `apply()`
+- **問題**：使用者輸入 15 → Enter → 套用後輸入框清空，按住 Enter 無法重複套用 15° 等距旋轉
+- **建議修法**：保留輸入值，focus 時 select-all；或暴露「last angle」preset
+- **延後理由**：UX 設計題，需要使用者偏好確認
+
+#### B21. Apply 按鈕背景的 white 是硬編碼而非 theme token
+
+- **來源**：Sprint 5.5 SUGGESTION
+- **位置**：[src/components/TransformActions.module.scss](src/components/TransformActions.module.scss) `.applyButton`
+- **問題**：`color: $white;` 不會跟 theme 變化；如果未來 selection-color 變淺，對比度可能不足
+- **建議修法**：定義 `--button-text` token 或 selection-color 對應的 on-accent 色
+- **延後理由**：theme 系統擴充
+
+#### B22. handleRotateSelection 應抽進 useRotateInteraction
+
+- **來源**：Sprint 5.5 SUGGESTION
+- **位置**：[src/components/EditorCanvas.tsx](src/components/EditorCanvas.tsx) `handleRotateSelection`
+- **問題**：EditorCanvas 已 895 行，這個 wrapper 應該與 `beginRotate` 共處於 `useRotateInteraction`
+- **建議修法**：hook 多回傳 `applyRotation(deg: number)`，drag 與 quick-rotate 共用一條路徑（也方便集中處理 in-flight guard）
+- **延後理由**：屬 EditorCanvas 重構（B1）的一部分
+
+#### B23. Tooltip 沒提示「繞 pivot」
+
+- **來源**：Sprint 5.5 SUGGESTION
+- **位置**：[src/components/TransformActions.tsx](src/components/TransformActions.tsx)
+- **問題**：使用者按 +90 不知道是繞當前 pivot 還是繞 selection 中心
+- **建議修法**：tooltip 加後綴「(around current pivot)」
+- **延後理由**：UX 措辭，需要 i18n 一併處理
+
+---
+
 ## 處理流程
 
 完成本檔列出之項目時：
