@@ -100,6 +100,14 @@ function App() {
 
   const handleLinesChange = useCallback(
     (newLines: Lines) => {
+      // Hot path: rotate/translate/scale/drag — line count unchanged. Skip the
+      // O(N) JSON-diff and mirror-group adjustment entirely.
+      if (newLines.length === lines.length) {
+        const synced = applyMirrorSync(newLines, mirrorGroups);
+        setLines(synced);
+        return;
+      }
+
       const oldLength = lines.length;
       const newLength = newLines.length;
 
@@ -172,6 +180,13 @@ function App() {
     return map;
   }, [mirrorGroups]);
 
+  // Source line indices used by mirror groups (rotated lines that are sources
+  // need both menu+close rotated together so the mirrored target stays in sync).
+  const sourceIndices = useMemo(
+    () => new Set(mirrorGroups.map((g) => g.sourceLine)),
+    [mirrorGroups]
+  );
+
   const generatedCode = useMemo(
     () => generateCode(lines, method, classNameConfig, sizeConfig, styleConfig),
     [lines, method, classNameConfig, sizeConfig, styleConfig]
@@ -233,6 +248,7 @@ function App() {
             onLinesChange={handleLinesChange}
             onReset={handleReset}
             mirrorTargetMap={mirrorTargetMap}
+            sourceIndices={sourceIndices}
           />
 
           <FloatingPreview

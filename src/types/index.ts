@@ -95,7 +95,7 @@ export interface AlignmentGuide {
 }
 
 // Tool types
-export type Tool = 'select' | 'pen-add' | 'pen-remove';
+export type Tool = 'select' | 'pen-add' | 'pen-remove' | 'rotate';
 
 // Preview theme types
 export type PreviewTheme = 'dark' | 'light' | 'custom';

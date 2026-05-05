@@ -14,8 +14,12 @@ $color-red: #ff6b6b;
 $color-cyan: #4ecdc4;
 $color-yellow: #ffe66d;
 
+$selection-color: #0d99ff;
+
 $white: #fff;
 $black: #000;
+
+$rotate-cursor: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cg stroke='black' stroke-width='3.5'%3E%3Cpath d='M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8'/%3E%3Cpath d='M21 3v5h-5'/%3E%3C/g%3E%3Cg stroke='white' stroke-width='2'%3E%3Cpath d='M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8'/%3E%3Cpath d='M21 3v5h-5'/%3E%3C/g%3E%3C/svg%3E");
 
 // Mixins
 @mixin flex-center {

@@ -20,6 +20,7 @@
   --guide-center-color: rgba(238, 70, 64, 0.6);
   --marquee-fill: rgba(100, 150, 255, 0.15);
   --marquee-stroke: rgba(100, 150, 255, 0.8);
+  --selection-color: #{$selection-color};
 }
 
 // Light Theme
@@ -42,6 +43,7 @@
   --guide-center-color: rgba(238, 70, 64, 0.5);
   --marquee-fill: rgba(60, 110, 230, 0.12);
   --marquee-stroke: rgba(60, 110, 230, 0.7);
+  --selection-color: #0070cc;
 }
 
 // Global styles
@@ -168,4 +170,9 @@ footer {
 // Light theme specific adjustments
 :root[data-theme='light'] .react-tooltip {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+}
+
+body.is-rotating,
+body.is-rotating * {
+  cursor: $rotate-cursor 12 12, grabbing !important;
 }

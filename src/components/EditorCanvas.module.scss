@@ -12,6 +12,7 @@
   background: var(--editor-bg);
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  overflow: visible;
 
   // Cursor styles for different tools
   &.cursorCrosshair {
@@ -168,4 +169,24 @@
   top: 20px;
   right: 20px;
   z-index: 10;
+}
+
+.selectedLinePath {
+  stroke-width: 5;
+  filter: drop-shadow(0 0 3px var(--selection-color));
+}
+
+.angleLabel {
+  position: absolute;
+  padding: 1px 3px;
+  background: rgba(0, 0, 0, 0.75);
+  color: $white;
+  font-size: 5.5px;
+  font-family: monospace;
+  border-radius: 2px;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+  transform: translate(4px, -11px);
+  white-space: nowrap;
+  z-index: 20;
 }

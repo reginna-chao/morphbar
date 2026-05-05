@@ -32,6 +32,7 @@ interface UseCanvasRenderArgs {
   penAddPreview: PenAddPreview | null;
   activeTool: Tool;
   isSelected: (lineIndex: number, pointIndex: number) => boolean;
+  isLineSelected: (lineIndex: number) => boolean;
   styles: Record<string, string>;
 }
 
@@ -55,11 +56,21 @@ function renderLine(
   args: UseCanvasRenderArgs,
   layers: { active: SVGGElement; ghost: SVGGElement; controls: SVGGElement }
 ) {
-  const { lines, mode, mirrorTargetMap, hoveredPoint, activeTool, isSelected, styles } = args;
+  const {
+    lines,
+    mode,
+    mirrorTargetMap,
+    hoveredPoint,
+    activeTool,
+    isSelected,
+    isLineSelected,
+    styles,
+  } = args;
   const activePoints = line[mode];
   const ghostPoints = line[mode === 'menu' ? 'close' : 'menu'];
   const isMirrorTarget = mirrorTargetMap.has(index);
   const sourceLineIndex = mirrorTargetMap.get(index);
+  const lineSelected = activeTool === 'rotate' && isLineSelected(index);
 
   const ghostPathD = generatePathD(ghostPoints);
   if (ghostPathD) {
@@ -83,6 +94,9 @@ function renderLine(
     } else {
       activePath.classList.add(styles.editorPath);
       activePath.setAttribute('stroke', lineColor);
+      if (lineSelected) {
+        activePath.classList.add(styles.selectedLinePath);
+      }
     }
     layers.active.appendChild(activePath);
   }
@@ -248,6 +262,7 @@ export function useCanvasRender(args: UseCanvasRenderArgs) {
       renderPenAddPreview(args, penAddPreview, connection);
     }
     // args is rebuilt every render — depend on its individual fields instead.
+    // args.styles is a stable CSS Module import; intentionally excluded.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     lines,
@@ -257,7 +272,7 @@ export function useCanvasRender(args: UseCanvasRenderArgs) {
     penAddPreview,
     activeTool,
     args.isSelected,
-    args.styles,
+    args.isLineSelected,
     layers.active,
     layers.ghost,
     layers.controls,

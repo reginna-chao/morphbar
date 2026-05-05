@@ -1,0 +1,45 @@
+.selectionBox {
+  fill: none;
+  stroke: var(--selection-color);
+  stroke-width: 0.6;
+  stroke-dasharray: 2, 1.5;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.selectionConnector {
+  stroke: var(--selection-color);
+  stroke-width: 0.6;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.selectionHandle {
+  fill: var(--selection-color);
+  stroke: $white;
+  stroke-width: 0.6;
+  cursor: $rotate-cursor 12 12, grab;
+  vector-effect: non-scaling-stroke;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.selectionHandleSnapping {
+  fill: $color-yellow;
+  stroke-width: 1.2;
+}
+
+.selectionPivot {
+  stroke: var(--selection-color);
+  stroke-width: 0.8;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.selectionPivotHit {
+  fill: transparent;
+  pointer-events: all;
+  cursor: move;
+}
