@@ -17,6 +17,7 @@ interface UseTranslateInteractionArgs {
   pivotPos: Point | null;
   setPivotPos: (p: Point | null) => void;
   onLinesChange: (lines: LineState[]) => void;
+  onCommit?: () => void;
   getSVGPoint: (e: MouseEvent) => DOMPoint;
   computeSnap: (x: number, y: number, lockedAxis: 'x' | 'y' | null) => SnapResult;
   setActiveGuides: (guides: AlignmentGuide[]) => void;
@@ -148,6 +149,7 @@ export function useTranslateInteraction(
       originLinesRef.current = null;
       argsRef.current.clearGuides();
       setState({ isTranslating: false });
+      argsRef.current.onCommit?.();
     };
 
     activeListenersRef.current = { onMove, onUp };

@@ -60,6 +60,7 @@ interface EditorCanvasProps {
   mode: Mode;
   lines: LineState[];
   onLinesChange: (lines: LineState[]) => void;
+  onCommit: () => void;
   onReset: () => void;
   mirrorTargetMap?: Map<LineIndex, LineIndex>;
   sourceIndices?: Set<number>;
@@ -69,6 +70,7 @@ export default function EditorCanvas({
   mode,
   lines,
   onLinesChange,
+  onCommit,
   onReset,
   mirrorTargetMap = EMPTY_MAP,
   sourceIndices = EMPTY_SET,
@@ -148,6 +150,7 @@ export default function EditorCanvas({
     pivot: effectivePivot,
     lines,
     onLinesChange,
+    onCommit,
     getSVGPoint,
   });
 
@@ -166,6 +169,7 @@ export default function EditorCanvas({
     pivotPos,
     setPivotPos,
     onLinesChange,
+    onCommit,
     getSVGPoint,
     computeSnap,
     setActiveGuides,
@@ -180,6 +184,7 @@ export default function EditorCanvas({
     pivotPos,
     setPivotPos,
     onLinesChange,
+    onCommit,
     getSVGPoint,
   });
 
@@ -296,6 +301,12 @@ export default function EditorCanvas({
     marqueeRect,
     draggedPoints,
   ]);
+
+  useEffect(() => {
+    if (draggedPoints.length === 0) return;
+    document.body.classList.add('is-point-dragging');
+    return () => document.body.classList.remove('is-point-dragging');
+  }, [draggedPoints.length]);
 
   useEffect(() => {
     if (rotateState.isRotating) {
@@ -425,6 +436,7 @@ export default function EditorCanvas({
         newLines[lineIndex][mode].splice(pointIndex, 1);
         setHoveredPoint(null);
         onLinesChange(newLines);
+        onCommit();
       } else {
         toast.error('A line must have at least two points', toastOptions.error);
       }
@@ -467,6 +479,7 @@ export default function EditorCanvas({
 
         newLines[lineIndex][mode].splice(insertPosition, 0, { x, y, type: 'anchor' });
         onLinesChange(newLines);
+        onCommit();
         return;
       }
 
@@ -497,6 +510,7 @@ export default function EditorCanvas({
             selectSingle(lineIndex, newLines[lineIndex][mode].length - 1);
           }
           onLinesChange(newLines);
+          onCommit();
           return;
         }
       }
@@ -706,7 +720,8 @@ export default function EditorCanvas({
     setDraggedPoints([]);
     anchorKeyRef.current = null;
     clearGuides();
-  }, [clearGuides]);
+    onCommit();
+  }, [clearGuides, onCommit]);
 
   useEffect(() => {
     if (draggedPoints.length === 0) return;
@@ -747,6 +762,11 @@ export default function EditorCanvas({
 
   // Marquee drag listeners — bound only on start, unbound on end
   const isMarqueeing = marqueeRect !== null;
+  useEffect(() => {
+    if (!isMarqueeing) return;
+    document.body.classList.add('is-marqueeing');
+    return () => document.body.classList.remove('is-marqueeing');
+  }, [isMarqueeing]);
   useEffect(() => {
     if (!isMarqueeing) return;
 

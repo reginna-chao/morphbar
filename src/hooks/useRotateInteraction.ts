@@ -12,6 +12,7 @@ interface UseRotateInteractionArgs {
   pivot: Point;
   lines: LineState[];
   onLinesChange: (lines: LineState[]) => void;
+  onCommit?: () => void;
   getSVGPoint: (e: MouseEvent) => DOMPoint;
 }
 
@@ -124,6 +125,7 @@ export function useRotateInteraction(args: UseRotateInteractionArgs): UseRotateI
       activeListenersRef.current = null;
       originLinesRef.current = null;
       setState((s) => ({ ...s, isRotating: false, cursorPos: null }));
+      argsRef.current.onCommit?.();
     };
 
     activeListenersRef.current = { onMove, onUp };

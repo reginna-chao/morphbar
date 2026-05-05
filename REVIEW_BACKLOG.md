@@ -124,6 +124,68 @@
 
 ---
 
+---
+
+## 來源：Sprint 5.4 Code Review（2026-05-06）
+
+### 🟡 低優先 / 邊界案例 — 暫緩
+
+#### B13. Removed-index inference 用 JSON.stringify 比較
+
+- **來源**：Sprint 5.4 SUGGESTION
+- **位置**：[src/hooks/useDesignHistory.ts](src/hooks/useDesignHistory.ts) `reconcileLines`
+- **問題**：刪除偵測迴圈用 JSON.stringify 逐行比較找出被刪的索引。LineManager 的 handleDeleteLine 已知 index，可以直接傳遞。
+- **建議修法**：新增 `removeLine(index: number)` handler，避免推測
+- **延後理由**：sub-millisecond 成本，目前正確
+
+#### B14. Reset 在無變化時也會 toast
+
+- **來源**：Sprint 5.4 SUGGESTION
+- **位置**：[src/App.tsx](src/App.tsx) `handleReset`
+- **問題**：commitWith 會 short-circuit，但 toast 還是會顯示
+- **建議修法**：reset 回傳是否真的有變更，或在呼叫前先比對
+
+#### B15. live/commit handler API 配對不對稱
+
+- **來源**：Sprint 5.4 SUGGESTION
+- **位置**：[src/hooks/useDesignHistory.ts](src/hooks/useDesignHistory.ts) `DesignHistoryHandlers`
+- **問題**：handlers 一字排開 9 個方法（live + commit + meta + mirror + style + shift + reset + template）。`setStyleConfig` 是 live-only 但沒對應 `commitStyleConfig`，呼叫端要記得搭配 `handlers.commit`
+- **建議修法**：每個 concern 都提供 paired (`setX` / `commitX`)，或提供 `withCommit(setter)` helper
+- **延後理由**：屬 API 設計重整，搭配 EditorCanvas 重構（B1）一起處理
+
+#### B16. Color picker 在 macOS 不可靠 blur
+
+- **來源**：Sprint 5.4 SUGGESTION
+- **位置**：StylePanel 各 section 的 `<input type="color">` `onBlur`
+- **問題**：macOS 原生 color picker 關閉時不一定觸發 blur，導致 live 變更可能被綁進下一個 commit 裡（破壞「一個動作一個 undo」不變條件）
+- **建議修法**：改用 250ms idle debounce commit，或自訂 color input
+- **延後理由**：跨平台行為，需要實機驗證
+
+#### B17. useHistory `initial` 只在 mount 時生效
+
+- **來源**：Sprint 5.4 SUGGESTION
+- **位置**：[src/hooks/useHistory.ts](src/hooks/useHistory.ts)
+- **問題**：`initial` 一旦 mount 後就鎖定。若未來有人把 `useHistory` 用在其他地方並期待 `initial` 可變動就會出 bug
+- **建議修法**：補一行注解，或加 dev-time warning
+- **延後理由**：目前只有一處呼叫，當下無風險
+
+#### B18. SizeConfig 拆分（width vs horizontalShift）的脆弱性
+
+- **來源**：Sprint 5.4 SUGGESTION
+- **位置**：[src/App.tsx](src/App.tsx) `handleSizeConfigChange`
+- **問題**：`width` 不入 history、`horizontalShift` 入 history，靠 App 層的 split 邏輯維持。未來若 SizeConfig 多一個欄位，呼叫端可能漏掉 split
+- **建議修法**：把 `horizontalShift` 完全移到自己的 state，或在型別層拆成 sub-object
+- **延後理由**：需要型別與多檔重構，等下次有相關需求時再處理
+
+#### B19. Equality check 用 JSON.stringify
+
+- **來源**：Sprint 5.4 SUGGESTION
+- **位置**：[src/hooks/useHistory.ts](src/hooks/useHistory.ts) `isEqual`
+- **問題**：每次 commit 對 snapshot 整個 stringify。目前 ~3-5KB 可接受
+- **延後理由**：當前負載沒問題
+
+---
+
 ## 處理流程
 
 完成本檔列出之項目時：

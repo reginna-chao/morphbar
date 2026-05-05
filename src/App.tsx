@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Tooltip } from 'react-tooltip';
@@ -7,18 +7,17 @@ import ControlsSidebar from '@/components/ControlsSidebar';
 import CodePanel from '@/components/CodePanel';
 import SegmentedControl from '@/components/ui/SegmentedControl';
 import ThemeToggle from '@/components/ThemeToggle';
+import UndoRedoControls from '@/components/UndoRedoControls';
+import { useDesignHistory } from '@/hooks/useDesignHistory';
 import { generateCode } from '@/utils/generator';
-import { adjustMirrorGroups, applyMirrorSync } from '@/utils/mirror';
 import { toastContainerConfig, toastOptions } from '@/config/toast';
 import type {
   Mode,
   Method,
-  LineState,
   Lines,
   ClassNameConfig,
   SizeConfig,
   StyleConfig,
-  MirrorGroup,
   LineIndex,
   PreviewThemeConfig,
   TemplateResult,
@@ -66,108 +65,120 @@ const INITIAL_LINES: Lines = [
   },
 ];
 
+const INITIAL_STYLE_CONFIG: StyleConfig = {
+  strokeColor: '#ffffff',
+  strokeWidth: 3,
+  perLineColor: false,
+  perLineWidth: false,
+  backgroundColor: '#ffffff',
+  backgroundTransparent: true,
+  borderWidth: 0,
+  borderColor: '#000000',
+  borderRadius: 0,
+};
+
 type PanelType = 'design' | 'code';
+
+const INTERACTION_BODY_CLASSES = [
+  'is-rotating',
+  'is-translating',
+  'is-scaling-nwse',
+  'is-scaling-nesw',
+  'is-scaling-ns',
+  'is-scaling-ew',
+  'is-point-dragging',
+  'is-marqueeing',
+];
+
+function isInteractionActive(): boolean {
+  const cls = document.body.classList;
+  for (const name of INTERACTION_BODY_CLASSES) {
+    if (cls.contains(name)) return true;
+  }
+  return false;
+}
 
 function App() {
   const [mode, setMode] = useState<Mode>('menu');
   const [method, setMethod] = useState<Method>('checkbox');
-  const [lines, setLines] = useState<LineState[]>(structuredClone(INITIAL_LINES));
   const [activePanel, setActivePanel] = useState<PanelType>('design');
   const [classNameConfig, setClassNameConfig] = useState<ClassNameConfig>({
     baseClass: 'hamburger-menu',
     activeClass: 'is-active',
   });
-  const [sizeConfig, setSizeConfig] = useState<SizeConfig>({
-    width: 50,
-    horizontalShift: 0,
-  });
-  const [styleConfig, setStyleConfig] = useState<StyleConfig>({
-    strokeColor: '#ffffff',
-    strokeWidth: 3,
-    perLineColor: false,
-    perLineWidth: false,
-    backgroundColor: '#ffffff',
-    backgroundTransparent: true,
-    borderWidth: 0,
-    borderColor: '#000000',
-    borderRadius: 0,
-  });
-  const [mirrorGroups, setMirrorGroups] = useState<MirrorGroup[]>([]);
+  const [renderSize, setRenderSize] = useState<{ width: number }>({ width: 50 });
   const [previewThemeConfig, setPreviewThemeConfig] = useState<PreviewThemeConfig>({
     theme: 'dark',
     customColor: '#888888',
   });
 
-  const handleLinesChange = useCallback(
-    (newLines: Lines) => {
-      // Hot path: rotate/translate/scale/drag — line count unchanged. Skip the
-      // O(N) JSON-diff and mirror-group adjustment entirely.
-      if (newLines.length === lines.length) {
-        const synced = applyMirrorSync(newLines, mirrorGroups);
-        setLines(synced);
-        return;
-      }
+  const { history, handlers } = useDesignHistory({
+    lines: structuredClone(INITIAL_LINES),
+    mirrorGroups: [],
+    styleConfig: { ...INITIAL_STYLE_CONFIG },
+    horizontalShift: 0,
+  });
+  const { lines, mirrorGroups, styleConfig, horizontalShift } = history.state;
 
-      const oldLength = lines.length;
-      const newLength = newLines.length;
-
-      let updatedGroups = mirrorGroups;
-
-      if (newLength < oldLength) {
-        if (oldLength - newLength === 1) {
-          // Detect which index was removed by comparing line data
-          let removedIndex = -1;
-          for (let i = 0; i < oldLength; i++) {
-            const before = JSON.stringify(lines[i]);
-            const after = i < newLength ? JSON.stringify(newLines[i]) : null;
-            if (after !== before) {
-              removedIndex = i;
-              break;
-            }
-          }
-          // Edge case: last line was removed
-          if (removedIndex === -1) removedIndex = oldLength - 1;
-          updatedGroups = adjustMirrorGroups(mirrorGroups, removedIndex);
-        } else {
-          // Multiple lines removed (e.g., reset) — clear all groups
-          updatedGroups = [];
-        }
-        setMirrorGroups(updatedGroups);
-      }
-
-      const synced = applyMirrorSync(newLines, updatedGroups);
-      setLines(synced);
-    },
-    [lines, mirrorGroups]
+  const sizeConfig: SizeConfig = useMemo(
+    () => ({ width: renderSize.width, horizontalShift }),
+    [renderSize.width, horizontalShift]
   );
 
-  const handleMirrorGroupsChange = useCallback((groups: MirrorGroup[]) => {
-    setMirrorGroups(groups);
-    // Apply mirror sync immediately with the new groups using functional update
-    setLines((currentLines) => applyMirrorSync(currentLines, groups));
-  }, []);
+  const handleSizeConfigChange = useCallback(
+    (next: SizeConfig) => {
+      if (next.width !== renderSize.width) {
+        setRenderSize({ width: next.width });
+      }
+      if (next.horizontalShift !== horizontalShift) {
+        handlers.setHorizontalShift(next.horizontalShift);
+      }
+    },
+    [handlers, renderSize.width, horizontalShift]
+  );
 
-  // Lightweight setter for pure metadata edits (color, strokeWidth) coming from
-  // the Style panel. Skips mirror-sync and mirror-group adjustment because
-  // metadata changes do not affect path geometry or line ordering.
-  const handleLinesMetaChange = useCallback((newLines: Lines) => {
-    setLines(newLines);
-  }, []);
-
-  const handleReset = () => {
-    setLines(structuredClone(INITIAL_LINES));
-    setMirrorGroups([]);
+  const handleReset = useCallback(() => {
+    handlers.reset(INITIAL_LINES);
     toast.success('Reset successful', toastOptions.success);
-  };
+  }, [handlers]);
 
-  const handleLoadTemplate = useCallback((result: TemplateResult) => {
-    setLines(result.lines);
-    setMirrorGroups([]);
-    if (result.styleOverrides) {
-      setStyleConfig((prev) => ({ ...prev, ...result.styleOverrides }));
-    }
-    toast.success('Template applied', toastOptions.success);
-  }, []);
+  const handleLoadTemplate = useCallback(
+    (result: TemplateResult) => {
+      handlers.loadTemplate(result);
+      toast.success('Template applied', toastOptions.success);
+    },
+    [handlers]
+  );
+
+  // Global Undo/Redo hotkeys.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target?.isContentEditable ?? false)
+      )
+        return;
+      if (!e.ctrlKey && !e.metaKey) return;
+      // Block undo/redo while a drag/marquee/transform is in flight — origin
+      // snapshots inside the interaction would desync from the rolled-back
+      // state and corrupt subsequent moves.
+      if (isInteractionActive()) return;
+
+      const key = e.key.toLowerCase();
+      if (key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        history.undo();
+      } else if ((key === 'z' && e.shiftKey) || key === 'y') {
+        e.preventDefault();
+        history.redo();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [history]);
 
   // Map of target line index → source line index (for disabling targets on canvas)
   const mirrorTargetMap = useMemo(() => {
@@ -245,10 +256,18 @@ function App() {
           <EditorCanvas
             mode={mode}
             lines={lines}
-            onLinesChange={handleLinesChange}
+            onLinesChange={handlers.setLines}
+            onCommit={handlers.commit}
             onReset={handleReset}
             mirrorTargetMap={mirrorTargetMap}
             sourceIndices={sourceIndices}
+          />
+
+          <UndoRedoControls
+            canUndo={history.canUndo}
+            canRedo={history.canRedo}
+            onUndo={history.undo}
+            onRedo={history.redo}
           />
 
           <FloatingPreview
@@ -266,15 +285,17 @@ function App() {
             mode={mode}
             onModeChange={setMode}
             lines={lines}
-            onLinesChange={handleLinesChange}
-            onLinesMetaChange={handleLinesMetaChange}
+            onLinesChange={handlers.commitLines}
+            onLinesMetaChange={handlers.setLinesMeta}
             onLoadTemplate={handleLoadTemplate}
             mirrorGroups={mirrorGroups}
-            onMirrorGroupsChange={handleMirrorGroupsChange}
+            onMirrorGroupsChange={handlers.commitMirrorGroups}
             sizeConfig={sizeConfig}
-            onSizeConfigChange={setSizeConfig}
+            onSizeConfigChange={handleSizeConfigChange}
+            onSizeConfigCommit={handlers.commit}
             styleConfig={styleConfig}
-            onStyleConfigChange={setStyleConfig}
+            onStyleConfigChange={handlers.setStyleConfig}
+            onStyleConfigCommit={handlers.commit}
           />
         ) : (
           <CodePanel
@@ -284,7 +305,7 @@ function App() {
             classNameConfig={classNameConfig}
             onClassNameChange={setClassNameConfig}
             sizeConfig={sizeConfig}
-            onSizeConfigChange={setSizeConfig}
+            onSizeConfigChange={handleSizeConfigChange}
           />
         )}
       </main>

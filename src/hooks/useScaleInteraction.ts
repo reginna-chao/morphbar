@@ -36,6 +36,7 @@ interface UseScaleInteractionArgs {
   pivotPos: Point | null;
   setPivotPos: (p: Point | null) => void;
   onLinesChange: (lines: LineState[]) => void;
+  onCommit?: () => void;
   getSVGPoint: (e: MouseEvent) => DOMPoint;
 }
 
@@ -201,6 +202,7 @@ export function useScaleInteraction(args: UseScaleInteractionArgs): UseScaleInte
       originLinesRef.current = null;
       handleRef.current = null;
       setState({ isScaling: false, activeHandle: null });
+      argsRef.current.onCommit?.();
     };
 
     activeListenersRef.current = { onMove, onUp };

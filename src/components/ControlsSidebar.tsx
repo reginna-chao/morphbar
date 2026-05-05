@@ -19,8 +19,14 @@ interface ControlsSidebarProps {
   onMirrorGroupsChange: (groups: MirrorGroup[]) => void;
   sizeConfig: SizeConfig;
   onSizeConfigChange: (config: SizeConfig) => void;
+  // Pushes the current sizeConfig (horizontalShift slice) onto the history
+  // stack — called on slider release / number input blur.
+  onSizeConfigCommit: () => void;
   styleConfig: StyleConfig;
   onStyleConfigChange: (config: StyleConfig) => void;
+  // Pushes the current styleConfig onto the history stack — called after
+  // discrete style changes (toggles) and on color/range pointer release.
+  onStyleConfigCommit: () => void;
 }
 
 export default function ControlsSidebar({
@@ -34,8 +40,10 @@ export default function ControlsSidebar({
   onMirrorGroupsChange,
   sizeConfig,
   onSizeConfigChange,
+  onSizeConfigCommit,
   styleConfig,
   onStyleConfigChange,
+  onStyleConfigCommit,
 }: ControlsSidebarProps) {
   const handleHorizontalShiftChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,8 +85,10 @@ export default function ControlsSidebar({
         <StylePanel
           styleConfig={styleConfig}
           onStyleConfigChange={onStyleConfigChange}
+          onStyleConfigCommit={onStyleConfigCommit}
           lines={lines}
           onLinesChange={onLinesMetaChange}
+          onLinesCommit={onLinesChange}
         />
       </div>
 
@@ -95,6 +105,8 @@ export default function ControlsSidebar({
               step="1"
               value={sizeConfig.horizontalShift}
               onChange={handleHorizontalShiftChange}
+              onPointerUp={onSizeConfigCommit}
+              onKeyUp={onSizeConfigCommit}
               className={styles.slider}
             />
             <input
@@ -103,6 +115,7 @@ export default function ControlsSidebar({
               max="200"
               value={sizeConfig.horizontalShift}
               onChange={handleHorizontalShiftChange}
+              onBlur={onSizeConfigCommit}
               aria-label="Horizontal shift value"
               className={styles.numberInput}
             />
