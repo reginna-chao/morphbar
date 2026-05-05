@@ -1,3 +1,9 @@
+.bboxDragArea {
+  fill: transparent;
+  pointer-events: all;
+  cursor: move;
+}
+
 .selectionBox {
   fill: none;
   stroke: var(--selection-color);
@@ -36,10 +42,20 @@
   stroke-width: 0.8;
   vector-effect: non-scaling-stroke;
   pointer-events: none;
+  transition:
+    stroke 0.15s,
+    stroke-width 0.15s;
 }
 
 .selectionPivotHit {
   fill: transparent;
   pointer-events: all;
   cursor: move;
+}
+
+.pivot {
+  &:hover .selectionPivot {
+    stroke: white;
+    stroke-width: 1.5;
+  }
 }

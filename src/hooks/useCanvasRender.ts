@@ -70,7 +70,7 @@ function renderLine(
   const ghostPoints = line[mode === 'menu' ? 'close' : 'menu'];
   const isMirrorTarget = mirrorTargetMap.has(index);
   const sourceLineIndex = mirrorTargetMap.get(index);
-  const lineSelected = activeTool === 'rotate' && isLineSelected(index);
+  const lineSelected = activeTool === 'transform' && isLineSelected(index);
 
   const ghostPathD = generatePathD(ghostPoints);
   if (ghostPathD) {

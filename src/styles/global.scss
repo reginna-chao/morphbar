@@ -176,3 +176,8 @@ body.is-rotating,
 body.is-rotating * {
   cursor: $rotate-cursor 12 12, grabbing !important;
 }
+
+body.is-translating,
+body.is-translating * {
+  cursor: grabbing !important;
+}

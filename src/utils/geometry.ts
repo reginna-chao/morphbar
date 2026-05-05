@@ -167,6 +167,33 @@ export function rotateLinesAroundPivot(
   });
 }
 
+export function translateLines(
+  lines: LineState[],
+  indices: Set<number>,
+  sourceIndices: Set<number>,
+  mode: Mode,
+  dx: number,
+  dy: number
+): LineState[] {
+  if (indices.size === 0 || (dx === 0 && dy === 0)) return lines;
+
+  return lines.map((line, i) => {
+    if (!indices.has(i)) return line;
+
+    const shift = (points: PathPoint[]): PathPoint[] =>
+      points.map((p) => ({
+        ...p,
+        x: round4(p.x + dx),
+        y: round4(p.y + dy),
+      }));
+
+    if (sourceIndices.has(i)) {
+      return { ...line, menu: shift(line.menu), close: shift(line.close) };
+    }
+    return { ...line, [mode]: shift(line[mode]) };
+  });
+}
+
 export function snapAngle(angleDeg: number, step: number, toleranceDeg: number): number {
   const nearest = Math.round(angleDeg / step) * step;
   return Math.abs(angleDeg - nearest) <= toleranceDeg ? nearest : angleDeg;

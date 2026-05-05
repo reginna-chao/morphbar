@@ -1,4 +1,4 @@
-import { MousePointer, GitBranchPlus, GitBranchMinus, RotateCw } from 'lucide-react';
+import { MousePointer, GitBranchPlus, GitBranchMinus, Move } from 'lucide-react';
 import type { Tool } from '@/types';
 import styles from './Toolbar.module.scss';
 
@@ -12,7 +12,7 @@ export default function Toolbar({ activeTool, onToolChange }: ToolbarProps) {
     { id: 'select', icon: MousePointer, label: 'Select (V)' },
     { id: 'pen-add', icon: GitBranchPlus, label: 'Add Point (A)' },
     { id: 'pen-remove', icon: GitBranchMinus, label: 'Remove Point (D)' },
-    { id: 'rotate', icon: RotateCw, label: 'Rotate (R)' },
+    { id: 'transform', icon: Move, label: 'Transform (R)' },
   ];
 
   return (

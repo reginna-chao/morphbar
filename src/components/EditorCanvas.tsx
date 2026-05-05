@@ -10,6 +10,7 @@ import { useBoxSelection, makeKey, parseKey } from '@/hooks/useBoxSelection';
 import { useCanvasRender } from '@/hooks/useCanvasRender';
 import { useLineSelection } from '@/hooks/useLineSelection';
 import { useRotateInteraction } from '@/hooks/useRotateInteraction';
+import { useTranslateInteraction } from '@/hooks/useTranslateInteraction';
 import { computeMultiLineBoundingBox, snapPivotToBoundingBox } from '@/utils/geometry';
 import type { Mode, LineState, DraggedPoint, Tool, LineIndex, Point } from '@/types';
 import styles from './EditorCanvas.module.scss';
@@ -155,6 +156,21 @@ export default function EditorCanvas({
     draggedPoints
   );
 
+  const { state: translateState, beginTranslate } = useTranslateInteraction({
+    selected: selectedLines,
+    sourceIndices,
+    mode,
+    lines,
+    pivot: effectivePivot,
+    pivotPos,
+    setPivotPos,
+    onLinesChange,
+    getSVGPoint,
+    computeSnap,
+    setActiveGuides,
+    clearGuides,
+  });
+
   // Refs let drag/marquee handlers stay stable so window listeners aren't
   // rebound on every render (e.g. every move during a drag updates `lines`).
   const linesRef = useRef(lines);
@@ -193,7 +209,7 @@ export default function EditorCanvas({
   }, [mode, clearSelection]);
   useEffect(() => {
     if (activeTool !== 'select') clearSelection();
-    if (activeTool !== 'rotate') clearLineSelection();
+    if (activeTool !== 'transform') clearLineSelection();
   }, [activeTool, clearSelection, clearLineSelection]);
   // Drop the custom pivot only when the selection becomes empty; shift-click
   // extending a multi-selection should preserve the user's pivot.
@@ -226,7 +242,7 @@ export default function EditorCanvas({
       const noModifiers = !e.ctrlKey && !e.metaKey && !e.altKey;
       if (!isInputTarget && noModifiers) {
         if (key === 'r') {
-          setActiveTool('rotate');
+          setActiveTool('transform');
           return;
         }
         if (key === 'v') {
@@ -243,7 +259,7 @@ export default function EditorCanvas({
         }
       }
       if (e.key === 'Escape') {
-        if (activeTool === 'rotate') {
+        if (activeTool === 'transform') {
           if (selectedLines.size > 0) {
             clearLineSelection();
           } else if (marqueeRect === null && draggedPoints.length === 0) {
@@ -275,6 +291,13 @@ export default function EditorCanvas({
       return () => document.body.classList.remove('is-rotating');
     }
   }, [rotateState.isRotating]);
+
+  useEffect(() => {
+    if (translateState.isTranslating) {
+      document.body.classList.add('is-translating');
+      return () => document.body.classList.remove('is-translating');
+    }
+  }, [translateState.isTranslating]);
 
   useCanvasRender({
     layers: {
@@ -339,14 +362,21 @@ export default function EditorCanvas({
     const isControlPoint = target.classList.contains(styles.controlPoint);
     const isPath = target.classList.contains(styles.editorPath);
 
-    // --- Rotate tool: line-level selection ---
-    if (activeTool === 'rotate') {
+    // --- Transform tool: line-level selection + translate when clicking selected ---
+    if (activeTool === 'transform') {
       if (isPath || isControlPoint) {
         const lineIndex = readDataIndex(target, 'data-line-index');
         if (lineIndex < 0 || lineIndex >= lines.length) return;
         if (mirrorTargetMap.has(lineIndex)) return;
-        if (e.shiftKey) toggleLine(lineIndex);
-        else selectSingleLine(lineIndex);
+        if (e.shiftKey) {
+          toggleLine(lineIndex);
+          return;
+        }
+        if (isLineSelected(lineIndex)) {
+          beginTranslate(e);
+          return;
+        }
+        selectSingleLine(lineIndex);
         return;
       }
       clearLineSelection();
@@ -753,7 +783,7 @@ export default function EditorCanvas({
         <g ref={controlsLayerRef} id="controls-layer"></g>
         <g ref={marqueeLayerRef} id="marquee-layer"></g>
 
-        {activeTool === 'rotate' && selectedLines.size > 0 && (
+        {activeTool === 'transform' && selectedLines.size > 0 && (
           <SelectionBox
             bbox={bbox}
             pivot={effectivePivot}
@@ -761,6 +791,7 @@ export default function EditorCanvas({
             onHandleMouseDown={beginRotate}
             onPivotMouseDown={beginPivotDrag}
             onPivotDoubleClick={() => setPivotPos(null)}
+            onBboxMouseDown={beginTranslate}
           />
         )}
 
