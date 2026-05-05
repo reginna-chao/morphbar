@@ -10,6 +10,7 @@ import { useBoxSelection, makeKey, parseKey } from '@/hooks/useBoxSelection';
 import { useCanvasRender } from '@/hooks/useCanvasRender';
 import { useLineSelection } from '@/hooks/useLineSelection';
 import { useRotateInteraction } from '@/hooks/useRotateInteraction';
+import { useScaleInteraction } from '@/hooks/useScaleInteraction';
 import { useTranslateInteraction } from '@/hooks/useTranslateInteraction';
 import { computeMultiLineBoundingBox, snapPivotToBoundingBox } from '@/utils/geometry';
 import type { Mode, LineState, DraggedPoint, Tool, LineIndex, Point } from '@/types';
@@ -171,6 +172,17 @@ export default function EditorCanvas({
     clearGuides,
   });
 
+  const { state: scaleState, beginScale } = useScaleInteraction({
+    selected: selectedLines,
+    sourceIndices,
+    mode,
+    lines,
+    pivotPos,
+    setPivotPos,
+    onLinesChange,
+    getSVGPoint,
+  });
+
   // Refs let drag/marquee handlers stay stable so window listeners aren't
   // rebound on every render (e.g. every move during a drag updates `lines`).
   const linesRef = useRef(lines);
@@ -298,6 +310,19 @@ export default function EditorCanvas({
       return () => document.body.classList.remove('is-translating');
     }
   }, [translateState.isTranslating]);
+
+  useEffect(() => {
+    if (!scaleState.isScaling || !scaleState.activeHandle) return;
+    const handle = scaleState.activeHandle;
+    let direction: 'nwse' | 'nesw' | 'ns' | 'ew';
+    if (handle === 'tl' || handle === 'br') direction = 'nwse';
+    else if (handle === 'tr' || handle === 'bl') direction = 'nesw';
+    else if (handle === 'tc' || handle === 'bc') direction = 'ns';
+    else direction = 'ew';
+    const cls = `is-scaling-${direction}`;
+    document.body.classList.add(cls);
+    return () => document.body.classList.remove(cls);
+  }, [scaleState.isScaling, scaleState.activeHandle]);
 
   useCanvasRender({
     layers: {
@@ -788,10 +813,11 @@ export default function EditorCanvas({
             bbox={bbox}
             pivot={effectivePivot}
             isSnapping={rotateState.isSnapping}
-            onHandleMouseDown={beginRotate}
+            onRotateHandleMouseDown={beginRotate}
             onPivotMouseDown={beginPivotDrag}
             onPivotDoubleClick={() => setPivotPos(null)}
             onBboxMouseDown={beginTranslate}
+            onScaleHandleMouseDown={beginScale}
           />
         )}
 

@@ -59,3 +59,32 @@
     stroke-width: 1.5;
   }
 }
+
+.scaleHandle {
+  fill: white;
+  stroke: var(--selection-color);
+  stroke-width: 0.4;
+  vector-effect: non-scaling-stroke;
+  pointer-events: all;
+  transition: fill 0.15s;
+
+  &:hover {
+    fill: var(--selection-color);
+  }
+}
+
+.cursorNwse {
+  cursor: nwse-resize;
+}
+
+.cursorNesw {
+  cursor: nesw-resize;
+}
+
+.cursorNs {
+  cursor: ns-resize;
+}
+
+.cursorEw {
+  cursor: ew-resize;
+}

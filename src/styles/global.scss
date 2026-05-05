@@ -181,3 +181,23 @@ body.is-translating,
 body.is-translating * {
   cursor: grabbing !important;
 }
+
+body.is-scaling-nwse,
+body.is-scaling-nwse * {
+  cursor: nwse-resize !important;
+}
+
+body.is-scaling-nesw,
+body.is-scaling-nesw * {
+  cursor: nesw-resize !important;
+}
+
+body.is-scaling-ns,
+body.is-scaling-ns * {
+  cursor: ns-resize !important;
+}
+
+body.is-scaling-ew,
+body.is-scaling-ew * {
+  cursor: ew-resize !important;
+}

@@ -54,6 +54,10 @@ export interface BoundingBox {
   y: number;
   width: number;
   height: number;
+  // Raw extent before MIN_BBOX_SIZE padding. Caller can detect a degenerate
+  // axis (collinear / single-anchor selection) when rawWidth or rawHeight is 0.
+  rawWidth: number;
+  rawHeight: number;
 }
 
 export const SELECTION_PADDING = 3;
@@ -61,7 +65,7 @@ export const SELECTION_PADDING = 3;
 export function computeBoundingBox(points: PathPoint[]): BoundingBox {
   const anchors = points.filter((p) => p.type === 'anchor');
   if (anchors.length === 0) {
-    return { x: 0, y: 0, width: 0, height: 0 };
+    return { x: 0, y: 0, width: 0, height: 0, rawWidth: 0, rawHeight: 0 };
   }
 
   let minX = Infinity;
@@ -75,8 +79,11 @@ export function computeBoundingBox(points: PathPoint[]): BoundingBox {
     if (p.y > maxY) maxY = p.y;
   }
 
-  let width = maxX - minX;
-  let height = maxY - minY;
+  const rawWidth = maxX - minX;
+  const rawHeight = maxY - minY;
+
+  let width = rawWidth;
+  let height = rawHeight;
 
   // Apply minimum size around the center for collinear/coincident points
   if (width < MIN_BBOX_SIZE) {
@@ -90,7 +97,7 @@ export function computeBoundingBox(points: PathPoint[]): BoundingBox {
     height = MIN_BBOX_SIZE;
   }
 
-  return { x: minX, y: minY, width, height };
+  return { x: minX, y: minY, width, height, rawWidth, rawHeight };
 }
 
 export function computeMultiLineBoundingBox(
@@ -99,7 +106,7 @@ export function computeMultiLineBoundingBox(
   mode: Mode
 ): BoundingBox {
   if (indices.size === 0) {
-    return { x: 0, y: 0, width: 0, height: 0 };
+    return { x: 0, y: 0, width: 0, height: 0, rawWidth: 0, rawHeight: 0 };
   }
 
   let minX = Infinity;
@@ -122,10 +129,13 @@ export function computeMultiLineBoundingBox(
     }
   });
 
-  if (!any) return { x: 0, y: 0, width: 0, height: 0 };
+  if (!any) return { x: 0, y: 0, width: 0, height: 0, rawWidth: 0, rawHeight: 0 };
 
-  let width = maxX - minX;
-  let height = maxY - minY;
+  const rawWidth = maxX - minX;
+  const rawHeight = maxY - minY;
+
+  let width = rawWidth;
+  let height = rawHeight;
 
   if (width < MIN_BBOX_SIZE) {
     const cx = (minX + maxX) / 2;
@@ -138,7 +148,7 @@ export function computeMultiLineBoundingBox(
     height = MIN_BBOX_SIZE;
   }
 
-  return { x: minX, y: minY, width, height };
+  return { x: minX, y: minY, width, height, rawWidth, rawHeight };
 }
 
 export function rotateLinesAroundPivot(
@@ -191,6 +201,35 @@ export function translateLines(
       return { ...line, menu: shift(line.menu), close: shift(line.close) };
     }
     return { ...line, [mode]: shift(line[mode]) };
+  });
+}
+
+function scalePoint(p: PathPoint, anchor: Point, sx: number, sy: number): PathPoint {
+  return {
+    ...p,
+    x: round4(anchor.x + (p.x - anchor.x) * sx),
+    y: round4(anchor.y + (p.y - anchor.y) * sy),
+  };
+}
+
+export function scaleLines(
+  lines: LineState[],
+  indices: Set<number>,
+  sourceIndices: Set<number>,
+  mode: Mode,
+  sx: number,
+  sy: number,
+  anchor: Point
+): LineState[] {
+  if (indices.size === 0 || (sx === 1 && sy === 1)) return lines;
+
+  return lines.map((line, i) => {
+    if (!indices.has(i)) return line;
+    const apply = (pts: PathPoint[]): PathPoint[] => pts.map((p) => scalePoint(p, anchor, sx, sy));
+    if (sourceIndices.has(i)) {
+      return { ...line, menu: apply(line.menu), close: apply(line.close) };
+    }
+    return { ...line, [mode]: apply(line[mode]) };
   });
 }
 

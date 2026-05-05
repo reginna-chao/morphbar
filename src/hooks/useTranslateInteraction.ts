@@ -45,7 +45,14 @@ export function useTranslateInteraction(
   const originLinesRef = useRef<LineState[] | null>(null);
   const originPivotRef = useRef<Point | null>(null);
   const originMouseRef = useRef<Point>({ x: 0, y: 0 });
-  const originBboxRef = useRef<BoundingBox>({ x: 0, y: 0, width: 0, height: 0 });
+  const originBboxRef = useRef<BoundingBox>({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    rawWidth: 0,
+    rawHeight: 0,
+  });
   const selectedRef = useRef<Set<number>>(new Set());
   const sourceRef = useRef<Set<number>>(new Set());
   const modeRef = useRef<Mode>('menu');
