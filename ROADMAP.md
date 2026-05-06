@@ -320,7 +320,7 @@ MorphBar 是一個漢堡選單圖示動畫生成器，允許使用者視覺化�
 
 | 編號 | 功能                       | 難度                 | 優先級 | 狀態        |
 | ---- | -------------------------- | -------------------- | ------ | ----------- |
-| 10   | Transform 工具 + Undo/Redo | ⭐⭐⭐⭐⭐⭐⭐⭐     | High   | 🟡 進行中   |
+| 10   | Transform 工具 + Undo/Redo | ⭐⭐⭐⭐⭐⭐⭐⭐     | High   | ✅ 已完成   |
 | 9    | 形狀生成（圓/方/菱形）     | ⭐⭐⭐⭐⭐⭐⭐⭐     | Low    | 📝 待開發   |
 | 8    | 增加轉折點（多點路徑）     | ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐ | High   | 🟡 部分完成 |
 
@@ -362,13 +362,13 @@ MorphBar 是一個漢堡選單圖示動畫生成器，允許使用者視覺化�
   - SVG 路徑改用 C（cubic bezier）命令
   - 控制點手把的視覺化與拖曳
 
-**10. Transform 工具 + Undo/Redo** ⭐⭐⭐⭐⭐⭐⭐⭐ 🟡 進行中
+**10. Transform 工具 + Undo/Redo** ⭐⭐⭐⭐⭐⭐⭐⭐ ✅ 已完成
 
 - **總體目標**：建立一個 Figma / Moveable 風格的「Transform 工具」，可在 canvas 上直接選取、移動、縮放、旋轉線段；並補上 Undo/Redo 為所有 Design panel 操作保底
 - **命名決策（2026-05-06）**：採用「**Transform**」（原規劃名為「Rotate」，因功能擴充至多操作改名）
 - **架構**：在 Toolbar 新增第 4 個工具「Transform」(R)；單一工具下支援多種操作
 
-#### Sprint 5.1 — 旋轉（Rotate）✅ 已完成（待 Code Review）
+#### Sprint 5.1 — 旋轉（Rotate）✅ 已完成
 
 - ✅ 新增 `Tool = 'rotate'`（將於 Sprint 5.2 改名為 `'transform'`）
 - ✅ 線段選取：點擊 path 任意位置、Shift+點擊多選、點空白清除、Esc 清除
@@ -386,24 +386,35 @@ MorphBar 是一個漢堡選單圖示動畫生成器，允許使用者視覺化�
 - `src/hooks/useRotateInteraction.ts`
 - `src/utils/geometry.ts`（含 `computeBoundingBox`、`computeMultiLineBoundingBox`、`rotateLinesAroundPivot`、`snapAngle`、`snapPivotToBoundingBox`、`SELECTION_PADDING`）
 
-#### Sprint 5.2 — 移動（Translate）📝 待開發
+#### Sprint 5.2 — 移動（Translate）✅ 已完成
 
-- 在 bbox 內任意位置 mousedown + 拖曳 → 平移選中線段
-- Cursor 進入 bbox：`move`
-- Mirror source：menu / close 同步平移
-- 工具改名 `'rotate'` → `'transform'`，icon 視需要更新
+- ✅ 工具改名 `'rotate'` → `'transform'`，icon 改 `Move`
+- ✅ 點到已選線段或 bbox 內空白 → 開始平移；點未選線段 → 切換選取（簡化 MVP）
+- ✅ 5px 網格 + 對齊輔助線 snap（沿用 `useAlignmentGuides` 的 `computeSnap`，bbox top-left 為 reference）
+- ✅ Shift 軸鎖
+- ✅ Mirror source：menu / close 同步平移
+- ✅ Custom pivot 跟著平移；default pivot 自動跟 bbox 中心
+- ✅ 拖曳期間 body class `is-translating` 全域鎖 cursor `grabbing`
+- ✅ Pivot hover 視覺回饋：十字線變白變粗
 
-#### Sprint 5.3 — 縮放（Scale）📝 待開發
+新增檔案：`src/hooks/useTranslateInteraction.ts`、`geometry.translateLines`
 
-- 8 個縮放控制點（4 corner + 4 edge midpoint）渲染在 bbox
-- Drag corner → 雙軸縮放；Drag edge → 單軸縮放
-- 錨點（縮放原點）= 對角 / 對邊中點
-- 按住 Shift = 等比縮放
-- Mirror source：menu / close 同步縮放
-- Cursor：`nwse-resize` / `nesw-resize` / `ns-resize` / `ew-resize`
-- 數學：`scalePoints(points, sx, sy, anchor)`
+#### Sprint 5.3 — 縮放（Scale）✅ 已完成
 
-#### Sprint 5.4 — Undo / Redo 📝 待開發
+- ✅ 8 個 scale handles（4 corners + 4 edge midpoints）渲染在 padded bbox
+- ✅ Drag corner → 雙軸縮放；Drag edge → 單軸縮放
+- ✅ 錨點 = 對角 / 對邊中點（Figma 風）
+- ✅ Shift = 等比縮放（corners only）
+- ✅ 允許負縮放（拖過錨點 → 翻轉）
+- ✅ Mirror source：menu / close 同步縮放
+- ✅ Cursor `nwse-resize` / `nesw-resize` / `ns-resize` / `ew-resize`，拖曳期間用 body class 鎖定
+- ✅ Degenerate axis 保護：`BoundingBox` 加 `rawWidth/rawHeight`，collinear 線段不會爆衝
+- ✅ Click-without-drag 為 identity（anchor 與 origin 都用 padded frame）
+- ✅ Custom pivot 縮放時跟著 anchor 一起縮放
+
+新增檔案：`src/hooks/useScaleInteraction.ts`、`geometry.scaleLines`
+
+#### Sprint 5.4 — Undo / Redo ✅ 已完成
 
 - **覆蓋範圍決策（2026-05-06）**：所有 **Design panel** 變更（採選項 c 但排除 Code Panel 項目）
   - ✅ 蓋：`lines`、`mirrorGroups`、`styleConfig`、`sizeConfig.horizontalShift`
@@ -414,22 +425,45 @@ MorphBar 是一個漢堡選單圖示動畫生成器，允許使用者視覺化�
   - Push 時機：drag 結束、按鈕 click、input blur — 拖曳每幀 NOT push
   - 鍵盤：Ctrl+Z（Mac: ⌘Z）= undo；Ctrl+Shift+Z 或 Ctrl+Y = redo
   - 視需要在 Toolbar / Header 加 undo/redo 按鈕
-- 注意事項：
-  - 拖曳進行中按 undo 應 no-op 或先結束拖曳再 undo
-  - History 上限（避免記憶體無上限）：建議 50–100 步
-  - sizeConfig 結構問題：`width` 與 `horizontalShift` 同物件，需在 restore 時部分套用
+- ✅ `useHistory<T>` (`useReducer` 版本，原子更新 past/present/future) + `useDesignHistory` 包裝
+- ✅ 50 步上限、JSON.stringify 等價判斷去重
+- ✅ Hotkeys：Ctrl/Cmd+Z = undo；Ctrl/Cmd+Shift+Z 與 Ctrl+Y = redo
+- ✅ Input/Textarea/Select/contentEditable 內不觸發
+- ✅ 拖曳進行中按 Undo/Redo no-op（檢查 body class `is-rotating` / `is-translating` / `is-scaling-*` / `is-point-dragging` / `is-marqueeing`）
+- ✅ 浮動 UndoRedoControls（lucide Undo2/Redo2）位於編輯區左下；disabled 狀態
+- ✅ 19 個 commit boundary：drag end (rotate/translate/scale/per-point/marquee)、pen+/pen- 點擊、LineManager add/delete/reverse/swap/template、MirrorManager 改變、StylePanel blur/release、horizontalShift slider release、Reset
+- ✅ sizeConfig.width 不入 history（CodePanel）；horizontalShift 入 history
 
-#### Sprint 5.5 — 快捷旋轉 + 角度輸入 📝 待開發
+新增檔案：
+- `src/hooks/useHistory.ts`
+- `src/hooks/useDesignHistory.ts`
+- `src/components/UndoRedoControls.tsx` + SCSS
 
-- 在 Transform 工具的 contextual 區（toolbar 第二排或 selection 旁）顯示：
-  - ⟲ 90°、⟳ 90°、180° 三顆按鈕（作用於目前選取，繞 pivot 轉）
-  - 角度數值輸入（Enter 立即套用，無 ghost preview）
+#### Sprint 5.5 — 快捷旋轉 + 角度輸入 ✅ 已完成
 
-#### Sprint 5.6 — 整體旋轉（ControlsSidebar）📝 待開發
+- ✅ TransformActions 浮動面板：在 Toolbar 下方，左對齊，獨立區塊
+- ✅ 顯示條件：`activeTool === 'transform'` && `selectedLines.size > 0`
+- ✅ 三顆按鈕：-90 / +90 / 180（lucide RotateCcw / RotateCw / Repeat）
+- ✅ 角度輸入：text + `inputMode="decimal"`（locale comma 自動轉 dot）；strict regex 驗證
+- ✅ Normalize：`% 360 === 0` 視為 no-op；拒絕 NaN / Infinity
+- ✅ 作用對象：當前選取，繞 effectivePivot；mirror source 自動同步 menu/close
+- ✅ 每次 click / Enter = 1 個 history snapshot
+- ✅ 拖曳進行中 disabled
+- ✅ A11y：aria-label、focus-visible、autoComplete=off
 
-- ControlsSidebar > Animation Settings 新增 3 顆按鈕：⟲ 90°、⟳ 90°、180°
-- 作用對象：當前 mode 的**所有線段**（不需選取）
-- 旋轉中心：canvas 中心 (50, 50)
+新增檔案：`src/components/TransformActions.tsx` + SCSS
+
+#### Sprint 5.6 — 整體旋轉（ControlsSidebar）✅ 已完成
+
+- ✅ ControlsSidebar > Animation Settings 新增 3 顆按鈕：-90 / +90 / 180
+- ✅ 作用對象：當前 mode 的**所有線段**
+- ✅ 旋轉中心：canvas 中心 (50, 50) — 與 mirror 軸 commute，applyMirrorSync 自然 re-derive targets
+- ✅ Mirror source 同步旋轉 menu/close（既定契約）
+- ✅ 拖曳進行中 click 為 no-op（`isInteractionActive` 守衛）
+- ✅ Empty-lines 守衛
+- ✅ A11y：`role="group"` + `aria-label` 包住 label + 按鈕
+
+新增檔案：`src/components/GlobalRotationButtons.tsx` + SCSS
 
 **9. 形狀生成** ⭐⭐⭐⭐⭐⭐⭐⭐
 
@@ -677,19 +711,16 @@ src/
 - Preview 主題切換（Dark / Light / Custom）
 - FloatingPreview 元件抽出
 
-### v1.5.0 (進行中) - Transform 工具系統
+### v1.5.0 - Transform 工具系統 ✅
 
-- Sprint 5 功能（分為 5.1–5.6 子 Sprint）
-- Sprint 5.1 旋轉（Rotate）✅ 已完成（待 Code Review）
-  - Canvas 直接操作的旋轉工具
-  - Figma 風格選擇框 + handle + pivot
-  - 15° snap、9 點 pivot snap、Figma 藍配色
-  - 旋轉 cursor 與全域 cursor lock
-- Sprint 5.2 移動（Translate）📝
-- Sprint 5.3 縮放（Scale）📝
-- Sprint 5.4 Undo / Redo 📝
-- Sprint 5.5 快捷旋轉 + 角度輸入 📝
-- Sprint 5.6 整體旋轉 📝
+- Sprint 5 功能全部完成（5.1–5.6）
+- Sprint 5.1 旋轉（Rotate）：Canvas 直接操作、Figma 風格選擇框 + handle + pivot、15° snap、9 點 pivot snap、Figma 藍 (`#0d99ff`) 配色
+- Sprint 5.2 移動（Translate）：bbox 內拖曳；5px grid + 對齊輔助線 snap；Shift 軸鎖；工具改名 Rotate → Transform，icon 改 Move
+- Sprint 5.3 縮放（Scale）：8 個 handles、Figma-style 對角錨點、Shift 等比、允許負縮放、direction-specific cursor lock
+- Sprint 5.4 Undo / Redo：useHistory + useDesignHistory；Ctrl/Cmd+Z、Ctrl/Cmd+Shift+Z、Ctrl+Y；浮動按鈕；19 commit boundaries；in-flight drag 守衛
+- Sprint 5.5 快捷旋轉 + 角度輸入：TransformActions 浮動面板，contextual 顯示
+- Sprint 5.6 整體旋轉：ControlsSidebar > Animation Settings 三顆按鈕，繞 canvas 中心
+- 延後項目（B1–B27）紀錄於 `REVIEW_BACKLOG.md`
 
 ---
 
