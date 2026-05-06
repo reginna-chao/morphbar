@@ -10,6 +10,7 @@ import ThemeToggle from '@/components/ThemeToggle';
 import UndoRedoControls from '@/components/UndoRedoControls';
 import { useDesignHistory } from '@/hooks/useDesignHistory';
 import { generateCode } from '@/utils/generator';
+import { rotateLinesAroundPivot } from '@/utils/geometry';
 import { toastContainerConfig, toastOptions } from '@/config/toast';
 import type {
   Mode,
@@ -203,6 +204,24 @@ function App() {
     [lines, method, classNameConfig, sizeConfig, styleConfig]
   );
 
+  const handleRotateAll = useCallback(
+    (deg: number) => {
+      if (isInteractionActive()) return;
+      if (lines.length === 0) return;
+      if (!Number.isFinite(deg) || deg % 360 === 0) return;
+      const allIndices = new Set<number>();
+      for (let i = 0; i < lines.length; i++) {
+        allIndices.add(i);
+      }
+      const next = rotateLinesAroundPivot(lines, allIndices, sourceIndices, mode, deg, {
+        x: 50,
+        y: 50,
+      });
+      handlers.commitLines(next);
+    },
+    [lines, sourceIndices, mode, handlers]
+  );
+
   return (
     <>
       <ToastContainer {...toastContainerConfig} />
@@ -296,6 +315,7 @@ function App() {
             styleConfig={styleConfig}
             onStyleConfigChange={handlers.setStyleConfig}
             onStyleConfigCommit={handlers.commit}
+            onRotateAll={handleRotateAll}
           />
         ) : (
           <CodePanel

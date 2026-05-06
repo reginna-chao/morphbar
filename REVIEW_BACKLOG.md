@@ -226,6 +226,45 @@
 
 ---
 
+---
+
+## 來源：Sprint 5.6 Code Review（2026-05-06）
+
+### 🟡 低優先 — 暫緩
+
+#### B24. handleRotateAll 重建 Set<number> 每次呼叫
+
+- **來源**：Sprint 5.6 SUGGESTION
+- **位置**：[src/App.tsx](src/App.tsx) `handleRotateAll`
+- **問題**：每次 click 都新建一個包含所有 index 的 Set
+- **建議修法**：(a) `geometry.ts` 加 `rotateAllLines(...)` overload；(b) 用 `useMemo` cache `allIndices`
+- **延後理由**：scale 不大時 perf 影響忽略
+
+#### B25. Mirror sync 蓋掉 target 旋轉的工作浪費
+
+- **來源**：Sprint 5.6 SUGGESTION
+- **位置**：[src/App.tsx](src/App.tsx) + [src/utils/geometry.ts](src/utils/geometry.ts) `rotateLinesAroundPivot`
+- **問題**：rotate 後 target 旋轉結果立刻被 `applyMirrorSync` 用 source 旋轉結果覆蓋。功能正確（軸 50,50 與旋轉中心 50,50 commute），但 target 旋轉計算白做
+- **建議修法**：rotate ALL 時跳過 mirror target 的旋轉；或 geometry.ts 加註解說明 commutativity
+- **延後理由**：行為正確，純 perf nit
+
+#### B26. handleRotateAll useCallback deps 包含 lines
+
+- **來源**：Sprint 5.6 SUGGESTION
+- **位置**：[src/App.tsx](src/App.tsx) `handleRotateAll` deps
+- **問題**：`lines` 每次拖曳都變 → callback 也每次重建，useCallback 失效
+- **建議修法**：用 ref 存 lines；或乾脆移除 useCallback
+- **延後理由**：下游沒 React.memo，目前無實際 perf 影響
+
+#### B27. Mirror source「整體旋轉」會同時影響 close（隱藏行為）
+
+- **來源**：Sprint 5.6 SUGGESTION
+- **問題**：在 menu 模式按 +90，所有 mirror source 的 close 也跟著旋轉。這是 `rotateLinesAroundPivot` 的既定契約（與單線旋轉一致），但使用者可能不知道
+- **建議修法**：tooltip 或 helper text 說明
+- **延後理由**：行為設計意圖，等使用者實際體感再決定
+
+---
+
 ## 處理流程
 
 完成本檔列出之項目時：

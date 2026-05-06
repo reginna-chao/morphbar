@@ -3,6 +3,7 @@ import SegmentedControl from './ui/SegmentedControl';
 import LineManager from './LineManager';
 import MirrorManager from './MirrorManager';
 import StylePanel from './StylePanel';
+import GlobalRotationButtons from './GlobalRotationButtons';
 import type { Mode, Lines, MirrorGroup, SizeConfig, StyleConfig, TemplateResult } from '@/types';
 import styles from './ControlsSidebar.module.scss';
 import { Menu, X } from 'lucide-react';
@@ -27,6 +28,7 @@ interface ControlsSidebarProps {
   // Pushes the current styleConfig onto the history stack — called after
   // discrete style changes (toggles) and on color/range pointer release.
   onStyleConfigCommit: () => void;
+  onRotateAll: (deg: number) => void;
 }
 
 export default function ControlsSidebar({
@@ -44,6 +46,7 @@ export default function ControlsSidebar({
   styleConfig,
   onStyleConfigChange,
   onStyleConfigCommit,
+  onRotateAll,
 }: ControlsSidebarProps) {
   const handleHorizontalShiftChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -94,6 +97,16 @@ export default function ControlsSidebar({
 
       <div className={styles.controlGroup}>
         <h2>Animation Settings</h2>
+
+        <div
+          className={styles.inputGroup}
+          role="group"
+          aria-label="Rotate all lines around canvas center"
+        >
+          <label aria-hidden="true">Rotate All</label>
+          <GlobalRotationButtons onRotate={onRotateAll} />
+        </div>
+
         <div className={styles.inputGroup}>
           <label htmlFor="horizontalShift">Horizontal Shift</label>
           <div className={styles.sliderGroup}>
