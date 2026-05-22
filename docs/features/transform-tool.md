@@ -289,6 +289,59 @@ bl ── bc ── br
 
 ---
 
+## 待決設計問題 / Open Design Questions
+
+### Q1. 整體旋轉 + Menu 單獨轉（2026-05-22 提出，等待決策）
+
+**使用者情境**：
+> 「我想要在轉成 Menu 的時候整個 icon 轉 +-90 / +-180，這個可能要配合整體旋轉調整」
+
+**目前 Sprint 5.6 整體旋轉行為**：
+
+| 線段類型 | menu 模式按 +90 後 |
+|---------|-------------------|
+| 一般線段 | 只有 menu 轉，close 不動 ✅（符合需求） |
+| **Mirror source** | menu + close 都轉（因為 source 內建「成對」規則） |
+| **Mirror target** | 跟著 source（也跟著兩邊都轉） |
+
+**問題**：使用者**沒用 mirror** 時現有行為已符合需求；**有用 mirror** 時，「menu 整體旋轉」會連帶讓 close 也轉，使用者期待 close 保留原樣。
+
+### 候選方案
+
+| 方案 | 行為 | 實作量 | 優缺 |
+|------|------|--------|------|
+| **A. ControlsSidebar 加 toggle** | 「Rotate current mode only」勾選後 → 忽略 mirror source 的成對規則 | 小 | UI 多一個選項，學習成本 |
+| **B. Shift modifier**（已建議） | Shift+click 整體旋轉按鈕 = 只轉當前 mode（忽略 mirror）；普通 click = 維持現狀 | 小 | 符合 Figma 慣例；tooltip 補說明 |
+| **C. 不寫新功能，提示使用者** | 暫時拆 mirror → 旋轉 → 再加 mirror | 0 | 流程繁瑣，但保留現有行為 |
+
+**先前建議**：方案 B（Shift modifier）— 符合 Figma 慣例、UI 不變、組合直覺。
+
+### 使用者決策（2026-05-22）
+
+> 「整體旋轉的 Shift 方案，**這個先等等**」
+
+延後決定。其他 Sprint 5.7 fixes（scale 錨點 + Alt + handle size）已先處理。
+
+### 換電腦後續工作建議
+
+1. 重新評估方案 A / B / C 哪個最直覺
+2. 若採方案 B，實作位置：[src/components/GlobalRotationButtons.tsx](../../src/components/GlobalRotationButtons.tsx) 的 `onRotate` 簽名擴成 `(deg: number, opts?: { menuCloseSeparate: boolean }) => void`；App.tsx 的 `handleRotateAll` 多接 opts，傳到 `rotateLinesAroundPivot` 一個新的 `respectMirrorSource: boolean` 參數
+3. 若採方案 A，UI 在 Animation Settings 區加個 `<input type="checkbox">` label「Rotate current mode only」，state 存在 App.tsx；不需修改 geometry signature，只需在 `handleRotateAll` 中把 toggle 為 true 時的 `sourceIndices` 改傳空 Set 給 `rotateLinesAroundPivot`（這樣 source 也只轉當前 mode）
+4. 不論 A 或 B，**`rotateLinesAroundPivot` 不需要改**（只要呼叫端控制 `sourceIndices` 傳入即可達成「忽略 source 成對規則」）
+
+### 技術備註
+
+實作關鍵在於：**整體旋轉只有「需不需要把 mirror source 視為 source」的差別**。
+
+- 維持現狀：`sourceIndices` 傳入真實 source 集合 → source 兩邊都轉
+- 「只轉當前 mode」：`sourceIndices` 改傳 `new Set()` → 所有線段（包含 source）都只轉當前 mode
+
+`applyMirrorSync` 之後仍會跑，但因為 source 只轉了一邊（例如 menu），target 也只會被同步一邊（target.menu 從 rotated source.menu 鏡射；target.close 維持原本 source.close 的鏡射 = 不變）。**幾何上結果正確**。
+
+唯一細節：`applyMirrorSync` 本身的行為 — 看 `src/utils/mirror.ts` 確認它會逐欄位（menu vs close）同步，而不是整體覆蓋。如果是後者就要先改 mirror.ts。
+
+---
+
 ## 已知技術債（詳見 `REVIEW_BACKLOG.md`）
 
 | 編號 | 主要項目 | 嚴重度 |
