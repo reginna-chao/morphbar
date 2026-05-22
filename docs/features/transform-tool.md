@@ -135,16 +135,19 @@ bl ── bc ── br
 - **Cursor**：4 個方向（nwse / nesw / ns / ew），拖曳期間 body class `is-scaling-{方向}` 全域鎖
 
 ### 錨點（Figma 風）
-- Drag 角落 → 對角為錨點
+- Drag 角落 → 對角為錨點（**unpadded geometry corner**）
 - Drag 邊中 → 對邊中為錨點
-- 數學位置**用 padded frame 算**（與視覺對齊；確保 click-without-drag 為 identity）
+- **Alt held = 對稱縮放**：錨點改為 bbox 中心，雙邊同時動（Sprint 5.7）
+- 視覺 handle 在 padded frame，數學錨點在 unpadded geometry：用「virtual handle point」+ mouse-to-handle offset 橋接（Sprint 5.7 修正）
 
 ### Scale 邏輯
-- `sx = (pt.x - anchor.x) / (originMouse.x - anchor.x)`
-- `sy = (pt.y - anchor.y) / (originMouse.y - anchor.y)`
+- 維持 `virtualPt = pt + mouseToHandleOffset`（offset 在 mousedown 凍結）
+- `sx = (virtualPt.x - anchor.x) / (originVirtualHandle.x - anchor.x)`
+- `sy = (virtualPt.y - anchor.y) / (originVirtualHandle.y - anchor.y)`
 - 邊中 handle 只影響一軸（另一軸強制 1.0）
 - **負縮放**：拖過錨點 → s 變負 → 線段翻轉（允許）
 - **Shift = 等比縮放**（corners only）：以 `Math.max(|sx|, |sy|)` 為大小，各軸保留各自的 sign（決策：簡單實作，未嚴格對齊 Figma 的「以較大絕對值軸的 sign 套用雙軸」— 列入 B7 backlog）
+- **Shift + Alt**：等比 + 從中心對稱
 - **Degenerate axis 守衛**：`bbox.rawWidth < epsilon` → x 軸強制 1.0；y 同理
 
 ### Mirror source 縮放
@@ -152,6 +155,10 @@ bl ── bc ── br
 
 ### Pivot
 - custom pivot 跟著縮放：`pivot' = anchor + (pivot - anchor) * s`
+- Alt 切換時 anchor 從對角變中心，pivot 也跟著切換錨點（行為一致，但會「跳」一下；見 B30）
+
+### Handle 大小
+- `HANDLE_SQUARE_HALF = 1`（2 SVG units 寬），Sprint 5.7 從 1.5 縮小
 
 ---
 
@@ -262,6 +269,9 @@ bl ── bc ── br
 | 2026-05-06 | Undo/Redo UI：浮動於編輯區左下 | 使用者指定 |
 | 2026-05-06 | 選擇框顏色採 Figma 藍 `#0d99ff`（暗）/ `#0070cc`（亮） | 使用者要求對比 |
 | 2026-05-06 | Pivot hover 視覺：白色十字線（不要背景 halo，避免殘影） | 使用者第二次調整 |
+| 2026-05-22 | Scale 錨點修正：unpadded geometry corner + virtual handle offset，對角不再位移 | 使用者實測回饋 |
+| 2026-05-22 | Scale 加 Alt = 對稱縮放（從 bbox 中心） | 使用者要求 |
+| 2026-05-22 | Scale handle 視覺尺寸 1.5 → 1.0（2/3 縮小） | 使用者偏好 |
 
 ---
 

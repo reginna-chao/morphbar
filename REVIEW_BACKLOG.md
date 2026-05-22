@@ -265,6 +265,38 @@
 
 ---
 
+---
+
+## 來源：Sprint 5.7 Code Review（2026-05-22）
+
+### 🟡 低優先 — 暫緩
+
+#### B28. useScaleInteraction.ts 已 258 行（B1 family）
+
+- **來源**：Sprint 5.7 SUGGESTION
+- **位置**：[src/hooks/useScaleInteraction.ts](src/hooks/useScaleInteraction.ts)
+- **問題**：加上 virtual handle 邏輯後超過 200 行上限
+- **建議修法**：把 `computeAnchor` + `computeVirtualHandlePoint` 抽到 `useScaleInteraction.helpers.ts`（兩個純函式，順便方便寫單元測試）
+- **延後理由**：屬 B1 重構 sprint 範圍
+
+#### B29. computeAnchor 與 computeVirtualHandlePoint 近重複
+
+- **來源**：Sprint 5.7 SUGGESTION
+- **位置**：[src/hooks/useScaleInteraction.ts](src/hooks/useScaleInteraction.ts)（兩個 switch）
+- **問題**：兩函式 8 個 case 都是對應關係，必須同步維護
+- **建議修法**：用 `anchor = { x: left + right - virtual.x, y: top + bottom - virtual.y }` 從一個推另一個
+- **延後理由**：當前正確；簡化會減低可讀性
+
+#### B30. Alt 對稱縮放下 pivot 跟隨中心而非角落
+
+- **來源**：Sprint 5.7 SUGGESTION
+- **位置**：[src/hooks/useScaleInteraction.ts](src/hooks/useScaleInteraction.ts) pivot 縮放邏輯
+- **問題**：使用者設了 custom pivot 後拖 scale + Alt → pivot 跟著 center anchor 縮放（數學上正確，符合 geometry 一致性）。但使用者切換 Alt 時 pivot 位置會「跳」
+- **建議修法**：實機測試後再決定。若要 pivot 不動，需把 pivot 縮放鎖在 `anchorRef.current` 不論 Alt
+- **延後理由**：手動 QA 項目，等使用者實測後決定
+
+---
+
 ## 處理流程
 
 完成本檔列出之項目時：

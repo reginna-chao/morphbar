@@ -7,7 +7,7 @@ const HANDLE_OFFSET = 8;
 const HANDLE_RADIUS = 2.5;
 const PIVOT_ARM = 4;
 const PIVOT_HIT_RADIUS = 4;
-const HANDLE_SQUARE_HALF = 1.5;
+const HANDLE_SQUARE_HALF = 1;
 
 const SCALE_HANDLE_LABELS: Record<ScaleHandle, string> = {
   tl: 'Scale handle, top-left corner',

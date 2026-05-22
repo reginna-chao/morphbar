@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  computeMultiLineBoundingBox,
-  scaleLines,
-  SELECTION_PADDING,
-  type BoundingBox,
-} from '@/utils/geometry';
+import { computeMultiLineBoundingBox, scaleLines, type BoundingBox } from '@/utils/geometry';
 import type { LineState, Mode, Point } from '@/types';
 
 export type ScaleHandle = 'tl' | 'tc' | 'tr' | 'ml' | 'mr' | 'bl' | 'bc' | 'br';
@@ -51,10 +46,10 @@ interface UseScaleInteractionResult {
 }
 
 function computeAnchor(handle: ScaleHandle, bbox: BoundingBox): Point {
-  const left = bbox.x - SELECTION_PADDING;
-  const right = bbox.x + bbox.width + SELECTION_PADDING;
-  const top = bbox.y - SELECTION_PADDING;
-  const bottom = bbox.y + bbox.height + SELECTION_PADDING;
+  const left = bbox.x;
+  const right = bbox.x + bbox.width;
+  const top = bbox.y;
+  const bottom = bbox.y + bbox.height;
   const cx = (left + right) / 2;
   const cy = (top + bottom) / 2;
 
@@ -78,6 +73,34 @@ function computeAnchor(handle: ScaleHandle, bbox: BoundingBox): Point {
   }
 }
 
+function computeVirtualHandlePoint(handle: ScaleHandle, bbox: BoundingBox): Point {
+  const left = bbox.x;
+  const right = bbox.x + bbox.width;
+  const top = bbox.y;
+  const bottom = bbox.y + bbox.height;
+  const cx = (left + right) / 2;
+  const cy = (top + bottom) / 2;
+
+  switch (handle) {
+    case 'tl':
+      return { x: left, y: top };
+    case 'tc':
+      return { x: cx, y: top };
+    case 'tr':
+      return { x: right, y: top };
+    case 'ml':
+      return { x: left, y: cy };
+    case 'mr':
+      return { x: right, y: cy };
+    case 'bl':
+      return { x: left, y: bottom };
+    case 'bc':
+      return { x: cx, y: bottom };
+    case 'br':
+      return { x: right, y: bottom };
+  }
+}
+
 export function useScaleInteraction(args: UseScaleInteractionArgs): UseScaleInteractionResult {
   const [state, setState] = useState<ScaleInteractionState>({
     isScaling: false,
@@ -93,7 +116,6 @@ export function useScaleInteraction(args: UseScaleInteractionArgs): UseScaleInte
   // changes don't redirect the scale operation.
   const originLinesRef = useRef<LineState[] | null>(null);
   const originPivotRef = useRef<Point | null>(null);
-  const originMouseRef = useRef<Point>({ x: 0, y: 0 });
   const originBboxRef = useRef<BoundingBox>({
     x: 0,
     y: 0,
@@ -103,6 +125,13 @@ export function useScaleInteraction(args: UseScaleInteractionArgs): UseScaleInte
     rawHeight: 0,
   });
   const anchorRef = useRef<Point>({ x: 0, y: 0 });
+  // Virtual handle = the unpadded geometry corner/edge midpoint that conceptually
+  // sits under the user's click on the visible padded handle. Tracking this lets
+  // scale math use the true geometry corner instead of the padded outline corner,
+  // so the opposite side of the selection stays put while still preserving
+  // identity (sx=sy=1) when the user clicks without dragging.
+  const originVirtualHandleRef = useRef<Point>({ x: 0, y: 0 });
+  const mouseToHandleOffsetRef = useRef<Point>({ x: 0, y: 0 });
   const handleRef = useRef<ScaleHandle | null>(null);
   const selectedRef = useRef<Set<number>>(new Set());
   const sourceRef = useRef<Set<number>>(new Set());
@@ -133,11 +162,17 @@ export function useScaleInteraction(args: UseScaleInteractionArgs): UseScaleInte
     const startPt = current.getSVGPoint(e.nativeEvent);
     const bbox = computeMultiLineBoundingBox(current.lines, current.selected, current.mode);
 
+    const virtualHandle = computeVirtualHandlePoint(handle, bbox);
+
     originLinesRef.current = current.lines;
     originPivotRef.current = current.pivotPos;
-    originMouseRef.current = { x: startPt.x, y: startPt.y };
     originBboxRef.current = bbox;
     anchorRef.current = computeAnchor(handle, bbox);
+    originVirtualHandleRef.current = virtualHandle;
+    mouseToHandleOffsetRef.current = {
+      x: virtualHandle.x - startPt.x,
+      y: virtualHandle.y - startPt.y,
+    };
     handleRef.current = handle;
     selectedRef.current = current.selected;
     sourceRef.current = current.sourceIndices;
@@ -151,9 +186,18 @@ export function useScaleInteraction(args: UseScaleInteractionArgs): UseScaleInte
       if (!origin || !activeHandle) return;
 
       const pt = argsRef.current.getSVGPoint(ev);
-      const anchor = anchorRef.current;
-      const originMouse = originMouseRef.current;
       const bbox = originBboxRef.current;
+      const offset = mouseToHandleOffsetRef.current;
+      const originVirtualHandle = originVirtualHandleRef.current;
+      // Re-evaluate altKey every frame so toggling Alt mid-drag swaps the anchor
+      // dynamically (corner-anchored <-> center-anchored).
+      const anchor: Point = ev.altKey
+        ? { x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 }
+        : anchorRef.current;
+      const virtualPt: Point = {
+        x: pt.x + offset.x,
+        y: pt.y + offset.y,
+      };
 
       const xAxisActive =
         HORIZONTAL_AXIS_HANDLES.has(activeHandle) && bbox.rawWidth >= DEGENERATE_EPSILON;
@@ -162,11 +206,11 @@ export function useScaleInteraction(args: UseScaleInteractionArgs): UseScaleInte
 
       let sx = 1;
       let sy = 1;
-      if (xAxisActive && Math.abs(originMouse.x - anchor.x) > DEGENERATE_EPSILON) {
-        sx = (pt.x - anchor.x) / (originMouse.x - anchor.x);
+      if (xAxisActive && Math.abs(originVirtualHandle.x - anchor.x) > DEGENERATE_EPSILON) {
+        sx = (virtualPt.x - anchor.x) / (originVirtualHandle.x - anchor.x);
       }
-      if (yAxisActive && Math.abs(originMouse.y - anchor.y) > DEGENERATE_EPSILON) {
-        sy = (pt.y - anchor.y) / (originMouse.y - anchor.y);
+      if (yAxisActive && Math.abs(originVirtualHandle.y - anchor.y) > DEGENERATE_EPSILON) {
+        sy = (virtualPt.y - anchor.y) / (originVirtualHandle.y - anchor.y);
       }
 
       if (ev.shiftKey && CORNER_HANDLES.has(activeHandle)) {
