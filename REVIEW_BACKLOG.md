@@ -297,6 +297,23 @@
 
 ---
 
+---
+
+## 來源：Sprint 5.8 Code Review（2026-05-22）
+
+### 🟡 低優先 — 暫緩
+
+#### B31. `applyMirrorSync` 對「鏈式 mirror group」沒做依賴排序
+
+- **來源**：Sprint 5.8 review（pre-existing，不是 5.8 引入的）
+- **位置**：[src/utils/mirror.ts](src/utils/mirror.ts) `applyMirrorSync` 迴圈
+- **問題**：當一條線同時是 group A 的 target 與 group B 的 source 時，iteration 順序會決定結果。若 group A 先處理，T1 = mirror(L) 用的是還沒被 group B 覆蓋的 L 值；group B 處理後 L 被覆蓋成 mirror(S2)，此時 T1 變 stale。
+- **影響**：與 Sprint 5.8 / 5.8b 無關（普通旋轉也有此問題）
+- **建議修法**：拓撲排序處理 groups；或迭代到 fixed-point。
+- **延後理由**：實際使用上鏈式 mirror 罕見，且風險評估後再決定
+
+---
+
 ## 處理流程
 
 完成本檔列出之項目時：

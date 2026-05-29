@@ -112,6 +112,7 @@ function App() {
     theme: 'dark',
     customColor: '#888888',
   });
+  const [rotateCurrentModeOnly, setRotateCurrentModeOnly] = useState(false);
 
   const { history, handlers } = useDesignHistory({
     lines: structuredClone(INITIAL_LINES),
@@ -213,13 +214,21 @@ function App() {
       for (let i = 0; i < lines.length; i++) {
         allIndices.add(i);
       }
-      const next = rotateLinesAroundPivot(lines, allIndices, sourceIndices, mode, deg, {
+      // When rotateCurrentModeOnly: pass an empty source set so even real mirror
+      // sources are treated as non-sources by rotateLinesAroundPivot — only the
+      // active mode of each source rotates. The inactive mode (e.g. close while
+      // editing menu) is preserved at the target because applyMirrorSync
+      // re-derives target.close from the untouched source.close. The active
+      // mode stays geometrically correct across the mirror because rotation
+      // around (50, 50) commutes with mirror axes through (50, 50).
+      const effectiveSources = rotateCurrentModeOnly ? new Set<number>() : sourceIndices;
+      const next = rotateLinesAroundPivot(lines, allIndices, effectiveSources, mode, deg, {
         x: 50,
         y: 50,
       });
       handlers.commitLines(next);
     },
-    [lines, sourceIndices, mode, handlers]
+    [lines, sourceIndices, mode, handlers, rotateCurrentModeOnly]
   );
 
   return (
@@ -316,6 +325,8 @@ function App() {
             onStyleConfigChange={handlers.setStyleConfig}
             onStyleConfigCommit={handlers.commit}
             onRotateAll={handleRotateAll}
+            rotateCurrentModeOnly={rotateCurrentModeOnly}
+            onRotateCurrentModeOnlyChange={setRotateCurrentModeOnly}
           />
         ) : (
           <CodePanel

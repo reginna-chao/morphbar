@@ -75,3 +75,18 @@
     border-color: var(--primary-color);
   }
 }
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-color);
+  cursor: pointer;
+  user-select: none;
+
+  input[type='checkbox'] {
+    cursor: pointer;
+    accent-color: var(--primary-color);
+  }
+}

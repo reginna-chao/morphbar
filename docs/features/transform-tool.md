@@ -272,6 +272,7 @@ bl ── bc ── br
 | 2026-05-22 | Scale 錨點修正：unpadded geometry corner + virtual handle offset，對角不再位移 | 使用者實測回饋 |
 | 2026-05-22 | Scale 加 Alt = 對稱縮放（從 bbox 中心） | 使用者要求 |
 | 2026-05-22 | Scale handle 視覺尺寸 1.5 → 1.0（2/3 縮小） | 使用者偏好 |
+| 2026-05-22 | 整體旋轉先採方案 B (Shift modifier)，後決定改 A (checkbox) | 使用者偏好顯性 UI 開關 |
 
 ---
 
@@ -318,27 +319,34 @@ bl ── bc ── br
 
 ### 使用者決策（2026-05-22）
 
-> 「整體旋轉的 Shift 方案，**這個先等等**」
+最初採方案 **B（Shift modifier）**並完成 Sprint 5.8；隨後使用者偏好顯性 UI 開關，於 Sprint 5.8b 改採方案 **A（checkbox toggle）**。
 
-延後決定。其他 Sprint 5.7 fixes（scale 錨點 + Alt + handle size）已先處理。
+### Sprint 5.8b 實作結果 ✅
 
-### 換電腦後續工作建議
+- [src/App.tsx](../../src/App.tsx)：新增 `rotateCurrentModeOnly` state（UI preference，不入 history、不持久化），`handleRotateAll(deg)` 讀此 state 決定要不要把 `sourceIndices` 改傳 `new Set()` 給 `rotateLinesAroundPivot`
+- [src/components/ControlsSidebar.tsx](../../src/components/ControlsSidebar.tsx)：在 Animation Settings > Rotate All group 內，於 `<GlobalRotationButtons />` 下方加上 checkbox「Rotate current mode only」，含 tooltip 說明「Useful with mirror groups」
+- [src/components/GlobalRotationButtons.tsx](../../src/components/GlobalRotationButtons.tsx)：`onRotate` 簽名還原為 `(deg) => void`，移除 `e.shiftKey` 讀取
+- **`rotateLinesAroundPivot`、`applyMirrorSync`、geometry 均未修改** ✓
 
-1. 重新評估方案 A / B / C 哪個最直覺
-2. 若採方案 B，實作位置：[src/components/GlobalRotationButtons.tsx](../../src/components/GlobalRotationButtons.tsx) 的 `onRotate` 簽名擴成 `(deg: number, opts?: { menuCloseSeparate: boolean }) => void`；App.tsx 的 `handleRotateAll` 多接 opts，傳到 `rotateLinesAroundPivot` 一個新的 `respectMirrorSource: boolean` 參數
-3. 若採方案 A，UI 在 Animation Settings 區加個 `<input type="checkbox">` label「Rotate current mode only」，state 存在 App.tsx；不需修改 geometry signature，只需在 `handleRotateAll` 中把 toggle 為 true 時的 `sourceIndices` 改傳空 Set 給 `rotateLinesAroundPivot`（這樣 source 也只轉當前 mode）
-4. 不論 A 或 B，**`rotateLinesAroundPivot` 不需要改**（只要呼叫端控制 `sourceIndices` 傳入即可達成「忽略 source 成對規則」）
+### 行為總結
+
+| 操作 | 一般線段 | Mirror source | Mirror target |
+|------|---------|--------------|--------------|
+| Checkbox 未勾選 | 只轉 mode | 兩邊都轉 | 跟著 source（兩邊都轉） |
+| **Checkbox 已勾選** | 只轉 mode | **只轉 mode** | 跟著 source（只該 mode） |
 
 ### 技術備註
 
-實作關鍵在於：**整體旋轉只有「需不需要把 mirror source 視為 source」的差別**。
+實作關鍵在於：**整體旋轉只有「需不需要把 mirror source 視為 source」的差別**，由 caller 控制 `sourceIndices` 即可達成。
 
-- 維持現狀：`sourceIndices` 傳入真實 source 集合 → source 兩邊都轉
-- 「只轉當前 mode」：`sourceIndices` 改傳 `new Set()` → 所有線段（包含 source）都只轉當前 mode
+- 維持現狀：傳入真實 source 集合 → source 兩邊都轉
+- 「只轉當前 mode」：傳入 `new Set()` → 所有線段（包含 source）都只轉當前 mode
 
-`applyMirrorSync` 之後仍會跑，但因為 source 只轉了一邊（例如 menu），target 也只會被同步一邊（target.menu 從 rotated source.menu 鏡射；target.close 維持原本 source.close 的鏡射 = 不變）。**幾何上結果正確**。
+`applyMirrorSync` 之後仍會跑，因為它逐欄位（menu vs close）同步：target.menu 從 rotated source.menu 鏡射；target.close 從**未動的** source.close 鏡射 → close 保持原樣。**幾何上結果正確**（rotation 繞 (50,50) 與 mirror 軸 commute）。
 
-唯一細節：`applyMirrorSync` 本身的行為 — 看 `src/utils/mirror.ts` 確認它會逐欄位（menu vs close）同步，而不是整體覆蓋。如果是後者就要先改 mirror.ts。
+### Pre-existing 注意事項（記入 B31）
+
+`applyMirrorSync` 沒對鏈式 mirror group 做依賴排序。一條線同時為 group A target 與 group B source 時，iteration 順序會影響結果。**此問題與 Sprint 5.8 無關，普通旋轉也有此問題**。
 
 ---
 

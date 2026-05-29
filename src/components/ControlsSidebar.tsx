@@ -29,6 +29,8 @@ interface ControlsSidebarProps {
   // discrete style changes (toggles) and on color/range pointer release.
   onStyleConfigCommit: () => void;
   onRotateAll: (deg: number) => void;
+  rotateCurrentModeOnly: boolean;
+  onRotateCurrentModeOnlyChange: (value: boolean) => void;
 }
 
 export default function ControlsSidebar({
@@ -47,6 +49,8 @@ export default function ControlsSidebar({
   onStyleConfigChange,
   onStyleConfigCommit,
   onRotateAll,
+  rotateCurrentModeOnly,
+  onRotateCurrentModeOnlyChange,
 }: ControlsSidebarProps) {
   const handleHorizontalShiftChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,6 +109,18 @@ export default function ControlsSidebar({
         >
           <label aria-hidden="true">Rotate All</label>
           <GlobalRotationButtons onRotate={onRotateAll} />
+          <label
+            className={styles.checkboxLabel}
+            data-tooltip-id="app-tooltip"
+            data-tooltip-content="When checked, rotation only affects the active mode. Useful with mirror groups."
+          >
+            <input
+              type="checkbox"
+              checked={rotateCurrentModeOnly}
+              onChange={(e) => onRotateCurrentModeOnlyChange(e.target.checked)}
+            />
+            <span>Rotate current mode only</span>
+          </label>
         </div>
 
         <div className={styles.inputGroup}>

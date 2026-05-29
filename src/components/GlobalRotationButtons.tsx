@@ -9,19 +9,19 @@ const PRESETS = [
   {
     deg: -90,
     icon: RotateCcw,
-    label: 'Rotate all -90 around canvas center',
+    label: 'Rotate all counterclockwise 90 degrees around canvas center',
     tooltip: 'Rotate all -90',
   },
   {
     deg: 90,
     icon: RotateCw,
-    label: 'Rotate all +90 around canvas center',
+    label: 'Rotate all clockwise 90 degrees around canvas center',
     tooltip: 'Rotate all +90',
   },
   {
     deg: 180,
     icon: Repeat,
-    label: 'Rotate all 180 around canvas center',
+    label: 'Rotate all 180 degrees around canvas center',
     tooltip: 'Rotate all 180',
   },
 ] as const;
