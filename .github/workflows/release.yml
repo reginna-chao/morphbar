@@ -45,6 +45,11 @@ jobs:
           feat=""; fix=""; perf=""; refactor=""; docs=""; style=""; chore=""; other=""
           while IFS='|' read -r subject sha; do
             [ -z "$subject" ] && continue
+            # Skip release/version-bump bookkeeping commits, e.g.
+            # "chore: release v1.4.0", "chore: update version to 1.3.0"
+            if printf '%s' "$subject" | grep -qiE '^[a-z]+(\([^)]*\))?!?:[[:space:]]*(release\b|(update|bump)[[:space:]]+version\b)'; then
+              continue
+            fi
             # Strip optional scope, e.g. "feat(editor): x" -> type "feat"
             type="$(printf '%s' "$subject" | sed -nE 's/^([a-zA-Z]+)(\([^)]*\))?!?:.*/\1/p' | tr '[:upper:]' '[:lower:]')"
             desc="$(printf '%s' "$subject" | sed -E 's/^[a-zA-Z]+(\([^)]*\))?!?:[[:space:]]*//')"
