@@ -1,18 +1,50 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import Button from './ui/Button';
 import Toolbar from './Toolbar';
+import TransformActions from './TransformActions';
 import GuidesLayer from './GuidesLayer';
+import SelectionBox from './SelectionBox';
 import { toastOptions } from '@/config/toast';
 import { useAlignmentGuides } from '@/hooks/useAlignmentGuides';
+import { useGroupAlignmentGuides } from '@/hooks/useGroupAlignmentGuides';
 import { useBoxSelection, makeKey, parseKey } from '@/hooks/useBoxSelection';
 import { useCanvasRender } from '@/hooks/useCanvasRender';
-import type { Mode, LineState, DraggedPoint, Tool, LineIndex } from '@/types';
+import { useLineSelection } from '@/hooks/useLineSelection';
+import { useRotateInteraction } from '@/hooks/useRotateInteraction';
+import { useScaleInteraction } from '@/hooks/useScaleInteraction';
+import { useTranslateInteraction } from '@/hooks/useTranslateInteraction';
+import {
+  computeMultiLineBoundingBox,
+  rotateLinesAroundPivot,
+  snapPivotToBoundingBox,
+  type BoundingBox,
+} from '@/utils/geometry';
+import type {
+  AlignmentGuide,
+  Mode,
+  LineState,
+  DraggedPoint,
+  Tool,
+  LineIndex,
+  Point,
+} from '@/types';
 import styles from './EditorCanvas.module.scss';
 import { RotateCw } from 'lucide-react';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const EMPTY_MAP = new Map<LineIndex, LineIndex>();
+const EMPTY_SET: Set<number> = new Set();
+const PIVOT_SNAP_TOLERANCE = 3;
+const PIVOT_BOUNDS_MIN = -50;
+const PIVOT_BOUNDS_MAX = 150;
+
+function readDataIndex(target: Element, attr: 'data-line-index' | 'data-point-index'): number {
+  const raw = target.getAttribute(attr) ?? target.parentElement?.getAttribute(attr) ?? null;
+  if (raw === null) return -1;
+  const value = Number.parseInt(raw, 10);
+  return Number.isNaN(value) ? -1 : value;
+}
 
 // Calculate shortest distance from point to line segment
 function pointToSegmentDistance(
@@ -43,16 +75,20 @@ interface EditorCanvasProps {
   mode: Mode;
   lines: LineState[];
   onLinesChange: (lines: LineState[]) => void;
+  onCommit: () => void;
   onReset: () => void;
   mirrorTargetMap?: Map<LineIndex, LineIndex>;
+  sourceIndices?: Set<number>;
 }
 
 export default function EditorCanvas({
   mode,
   lines,
   onLinesChange,
+  onCommit,
   onReset,
   mirrorTargetMap = EMPTY_MAP,
+  sourceIndices = EMPTY_SET,
 }: EditorCanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const activeLayerRef = useRef<SVGGElement>(null);
@@ -90,10 +126,186 @@ export default function EditorCanvas({
     cancelMarquee,
   } = useBoxSelection();
 
+  const {
+    selected: selectedLines,
+    isLineSelected,
+    selectSingle: selectSingleLine,
+    toggleLine,
+    clear: clearLineSelection,
+    prune: pruneLineSelection,
+  } = useLineSelection();
+
+  const [pivotPos, setPivotPos] = useState<Point | null>(null);
+
+  const bbox = useMemo(
+    () => computeMultiLineBoundingBox(lines, selectedLines, mode),
+    [lines, selectedLines, mode]
+  );
+
+  const effectivePivot: Point = useMemo(
+    () => pivotPos ?? { x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 },
+    [pivotPos, bbox]
+  );
+
+  const getSVGPoint = useCallback((event: MouseEvent): DOMPoint => {
+    const svg = svgRef.current;
+    if (!svg) throw new Error('SVG element not found');
+    const pt = svg.createSVGPoint();
+    pt.x = event.clientX;
+    pt.y = event.clientY;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) throw new Error('Failed to get screen CTM');
+    return pt.matrixTransform(ctm.inverse());
+  }, []);
+
+  const { state: rotateState, beginRotate } = useRotateInteraction({
+    selected: selectedLines,
+    sourceIndices,
+    mode,
+    pivot: effectivePivot,
+    lines,
+    onLinesChange,
+    onCommit,
+    getSVGPoint,
+  });
+
   const { activeGuides, setActiveGuides, computeSnap, clearGuides } = useAlignmentGuides(
     lines,
     mode,
     draggedPoints
+  );
+
+  // Refs let useGroupAlignmentGuides be declared after the interaction hooks (it
+  // needs their isTranslating/isScaling flags) while still feeding its snap
+  // callbacks back into them. Both interaction hooks read args via argsRef so
+  // updating these wrappers per-render is safe.
+  type SnapTranslateFn = (
+    originBbox: BoundingBox,
+    rawDx: number,
+    rawDy: number,
+    lockedAxis: 'x' | 'y' | null
+  ) => { dx: number; dy: number; guides: AlignmentGuide[] };
+  type SnapScaleFn = (
+    originBbox: BoundingBox,
+    sx: number,
+    sy: number,
+    anchor: Point,
+    movingEdges: { movingX: 'left' | 'right' | null; movingY: 'top' | 'bottom' | null }
+  ) => { sx: number; sy: number; guides: AlignmentGuide[] };
+
+  const snapTranslateRef = useRef<SnapTranslateFn | null>(null);
+  const snapScaleRef = useRef<SnapScaleFn | null>(null);
+  const setGroupGuidesRef = useRef<((guides: AlignmentGuide[]) => void) | null>(null);
+  const clearGroupGuidesRef = useRef<(() => void) | null>(null);
+
+  const snapTranslateBridge = useCallback<SnapTranslateFn>(
+    (originBbox, rawDx, rawDy, lockedAxis) => {
+      const fn = snapTranslateRef.current;
+      if (!fn) return { dx: rawDx, dy: rawDy, guides: [] };
+      return fn(originBbox, rawDx, rawDy, lockedAxis);
+    },
+    []
+  );
+  const snapScaleBridge = useCallback<SnapScaleFn>((originBbox, sx, sy, anchor, movingEdges) => {
+    const fn = snapScaleRef.current;
+    if (!fn) return { sx, sy, guides: [] };
+    return fn(originBbox, sx, sy, anchor, movingEdges);
+  }, []);
+  const setGroupGuidesBridge = useCallback((guides: AlignmentGuide[]) => {
+    setGroupGuidesRef.current?.(guides);
+  }, []);
+  const clearGroupGuidesBridge = useCallback(() => {
+    clearGroupGuidesRef.current?.();
+  }, []);
+
+  const { state: translateState, beginTranslate } = useTranslateInteraction({
+    selected: selectedLines,
+    sourceIndices,
+    mode,
+    lines,
+    pivotPos,
+    setPivotPos,
+    onLinesChange,
+    onCommit,
+    getSVGPoint,
+    snapTranslate: snapTranslateBridge,
+    setActiveGuides: setGroupGuidesBridge,
+    clearGuides: clearGroupGuidesBridge,
+  });
+
+  const { state: scaleState, beginScale } = useScaleInteraction({
+    selected: selectedLines,
+    sourceIndices,
+    mode,
+    lines,
+    pivotPos,
+    setPivotPos,
+    onLinesChange,
+    onCommit,
+    getSVGPoint,
+    snapScale: snapScaleBridge,
+    setActiveGuides: setGroupGuidesBridge,
+    clearGuides: clearGroupGuidesBridge,
+  });
+
+  const {
+    activeGuides: groupGuides,
+    setActiveGuides: setGroupGuides,
+    clearGuides: clearGroupGuides,
+    snapTranslate,
+    snapScale,
+  } = useGroupAlignmentGuides(
+    lines,
+    mode,
+    selectedLines,
+    translateState.isTranslating || scaleState.isScaling
+  );
+
+  // Refresh ref bridges after commit (not during render) so the interaction
+  // hooks read the latest snap closures. Intentionally no dep array — runs
+  // every render, cheaper than risking stale refs.
+  useEffect(() => {
+    snapTranslateRef.current = snapTranslate;
+    snapScaleRef.current = snapScale;
+    setGroupGuidesRef.current = setGroupGuides;
+    clearGroupGuidesRef.current = clearGroupGuides;
+  });
+
+  const handleRotateSelection = useCallback(
+    (deg: number) => {
+      if (selectedLines.size === 0 || deg === 0) return;
+      if (
+        rotateState.isRotating ||
+        translateState.isTranslating ||
+        scaleState.isScaling ||
+        draggedPoints.length > 0
+      ) {
+        return;
+      }
+      const next = rotateLinesAroundPivot(
+        lines,
+        selectedLines,
+        sourceIndices,
+        mode,
+        deg,
+        effectivePivot
+      );
+      onLinesChange(next);
+      onCommit();
+    },
+    [
+      lines,
+      selectedLines,
+      sourceIndices,
+      mode,
+      effectivePivot,
+      onLinesChange,
+      onCommit,
+      rotateState.isRotating,
+      translateState.isTranslating,
+      scaleState.isScaling,
+      draggedPoints.length,
+    ]
   );
 
   // Refs let drag/marquee handlers stay stable so window listeners aren't
@@ -104,6 +316,20 @@ export default function EditorCanvas({
   const draggedPointsRef = useRef<DraggedPoint[]>([]);
   const onLinesChangeRef = useRef(onLinesChange);
   const marqueeAdditiveRef = useRef(false);
+  const pivotDragListenersRef = useRef<{
+    onMove: (e: MouseEvent) => void;
+    onUp: () => void;
+  } | null>(null);
+  useEffect(() => {
+    return () => {
+      const active = pivotDragListenersRef.current;
+      if (active) {
+        window.removeEventListener('mousemove', active.onMove);
+        window.removeEventListener('mouseup', active.onUp);
+        pivotDragListenersRef.current = null;
+      }
+    };
+  }, []);
   useEffect(() => {
     linesRef.current = lines;
     modeRef.current = mode;
@@ -120,25 +346,114 @@ export default function EditorCanvas({
   }, [mode, clearSelection]);
   useEffect(() => {
     if (activeTool !== 'select') clearSelection();
-  }, [activeTool, clearSelection]);
+    if (activeTool !== 'transform') clearLineSelection();
+  }, [activeTool, clearSelection, clearLineSelection]);
+  // Drop the custom pivot only when the selection becomes empty; shift-click
+  // extending a multi-selection should preserve the user's pivot.
+  useEffect(() => {
+    if (selectedLines.size === 0) setPivotPos(null);
+  }, [selectedLines]);
+  useEffect(() => {
+    setPivotPos(null);
+  }, [mode]);
   // When lines/mirror targets change (e.g. line removed, anchor deleted,
   // mirror group toggled), drop only entries that no longer reference a
   // valid anchor — keep selections that still point at real points.
   useEffect(() => {
     pruneSelection(lines, mode, mirrorTargetMap);
   }, [lines, mode, mirrorTargetMap, pruneSelection]);
+  useEffect(() => {
+    const targets = new Set<number>(mirrorTargetMap.keys());
+    pruneLineSelection(lines.length, targets);
+  }, [lines, mirrorTargetMap, pruneLineSelection]);
 
-  // Esc clears selection (Select tool only)
+  // Keyboard: V/A/D/R switch tools, Esc clears selection or falls back to Select.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && activeTool === 'select') {
-        clearSelection();
-        cancelMarquee();
+      const target = e.target as HTMLElement | null;
+      const isInputTarget =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        (target?.isContentEditable ?? false);
+      const key = e.key.toLowerCase();
+      const noModifiers = !e.ctrlKey && !e.metaKey && !e.altKey;
+      if (!isInputTarget && noModifiers) {
+        if (key === 'r') {
+          setActiveTool('transform');
+          return;
+        }
+        if (key === 'v') {
+          setActiveTool('select');
+          return;
+        }
+        if (key === 'a') {
+          setActiveTool('pen-add');
+          return;
+        }
+        if (key === 'd') {
+          setActiveTool('pen-remove');
+          return;
+        }
+      }
+      if (e.key === 'Escape') {
+        if (activeTool === 'transform') {
+          if (selectedLines.size > 0) {
+            clearLineSelection();
+          } else if (marqueeRect === null && draggedPoints.length === 0) {
+            setActiveTool('select');
+          }
+          return;
+        }
+        if (activeTool === 'select') {
+          clearSelection();
+          cancelMarquee();
+        }
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [activeTool, clearSelection, cancelMarquee]);
+  }, [
+    activeTool,
+    clearSelection,
+    cancelMarquee,
+    clearLineSelection,
+    selectedLines,
+    marqueeRect,
+    draggedPoints,
+  ]);
+
+  useEffect(() => {
+    if (draggedPoints.length === 0) return;
+    document.body.classList.add('is-point-dragging');
+    return () => document.body.classList.remove('is-point-dragging');
+  }, [draggedPoints.length]);
+
+  useEffect(() => {
+    if (rotateState.isRotating) {
+      document.body.classList.add('is-rotating');
+      return () => document.body.classList.remove('is-rotating');
+    }
+  }, [rotateState.isRotating]);
+
+  useEffect(() => {
+    if (translateState.isTranslating) {
+      document.body.classList.add('is-translating');
+      return () => document.body.classList.remove('is-translating');
+    }
+  }, [translateState.isTranslating]);
+
+  useEffect(() => {
+    if (!scaleState.isScaling || !scaleState.activeHandle) return;
+    const handle = scaleState.activeHandle;
+    let direction: 'nwse' | 'nesw' | 'ns' | 'ew';
+    if (handle === 'tl' || handle === 'br') direction = 'nwse';
+    else if (handle === 'tr' || handle === 'bl') direction = 'nesw';
+    else if (handle === 'tc' || handle === 'bc') direction = 'ns';
+    else direction = 'ew';
+    const cls = `is-scaling-${direction}`;
+    document.body.classList.add(cls);
+    return () => document.body.classList.remove(cls);
+  }, [scaleState.isScaling, scaleState.activeHandle]);
 
   useCanvasRender({
     layers: {
@@ -154,6 +469,7 @@ export default function EditorCanvas({
     penAddPreview,
     activeTool,
     isSelected,
+    isLineSelected,
     styles,
   });
 
@@ -177,18 +493,6 @@ export default function EditorCanvas({
     rect.classList.add(styles.marqueeRect);
     layer.appendChild(rect);
   }, [marqueeRect]);
-
-  const getSVGPoint = (event: MouseEvent): DOMPoint => {
-    const svg = svgRef.current;
-    if (!svg) throw new Error('SVG element not found');
-
-    const pt = svg.createSVGPoint();
-    pt.x = event.clientX;
-    pt.y = event.clientY;
-    const ctm = svg.getScreenCTM();
-    if (!ctm) throw new Error('Failed to get screen CTM');
-    return pt.matrixTransform(ctm.inverse());
-  };
 
   // Helpers reading current selection ----------------------------------------
   const getSinglySelected = (): { lineIndex: number; pointIndex: number } | null => {
@@ -214,22 +518,45 @@ export default function EditorCanvas({
     const isControlPoint = target.classList.contains(styles.controlPoint);
     const isPath = target.classList.contains(styles.editorPath);
 
+    // --- Transform tool: line-level selection + translate when clicking selected ---
+    if (activeTool === 'transform') {
+      if (isPath || isControlPoint) {
+        const lineIndex = readDataIndex(target, 'data-line-index');
+        if (lineIndex < 0 || lineIndex >= lines.length) return;
+        if (mirrorTargetMap.has(lineIndex)) return;
+        if (e.shiftKey) {
+          toggleLine(lineIndex);
+          return;
+        }
+        if (isLineSelected(lineIndex)) {
+          beginTranslate(e);
+          return;
+        }
+        selectSingleLine(lineIndex);
+        return;
+      }
+      clearLineSelection();
+      return;
+    }
+
     // --- Pen- tool: delete anchor ---
     if (activeTool === 'pen-remove') {
       if (!isControlPoint) return;
-      const lineIndex = parseInt(target.getAttribute('data-line-index') || '0');
-      const pointIndex = parseInt(target.getAttribute('data-point-index') || '0');
+      const lineIndex = readDataIndex(target, 'data-line-index');
+      const pointIndex = readDataIndex(target, 'data-point-index');
 
-      if (lineIndex >= lines.length) return;
+      if (lineIndex < 0 || lineIndex >= lines.length) return;
+      if (pointIndex < 0) return;
       if (mirrorTargetMap.has(lineIndex)) return;
 
-      const newLines = JSON.parse(JSON.stringify(lines)) as LineState[];
+      const newLines = structuredClone(lines);
       const anchors = newLines[lineIndex][mode].filter((p) => p.type === 'anchor');
 
       if (anchors.length > 2) {
         newLines[lineIndex][mode].splice(pointIndex, 1);
         setHoveredPoint(null);
         onLinesChange(newLines);
+        onCommit();
       } else {
         toast.error('A line must have at least two points', toastOptions.error);
       }
@@ -240,20 +567,16 @@ export default function EditorCanvas({
     if (activeTool === 'pen-add') {
       // Insert in middle of segment
       if (isPath) {
-        const lineIndex = parseInt(
-          target.getAttribute('data-line-index') ||
-            target.parentElement?.getAttribute('data-line-index') ||
-            '0'
-        );
+        const lineIndex = readDataIndex(target, 'data-line-index');
 
-        if (lineIndex >= lines.length) return;
+        if (lineIndex < 0 || lineIndex >= lines.length) return;
         if (mirrorTargetMap.has(lineIndex)) return;
 
-        const pt = getSVGPoint(e.nativeEvent as unknown as MouseEvent);
+        const pt = getSVGPoint(e.nativeEvent);
         const x = Math.round(pt.x / 5) * 5;
         const y = Math.round(pt.y / 5) * 5;
 
-        const newLines = JSON.parse(JSON.stringify(lines)) as LineState[];
+        const newLines = structuredClone(lines);
         const currentPoints = newLines[lineIndex][mode];
         const anchors = currentPoints.filter((p) => p.type === 'anchor');
 
@@ -276,6 +599,7 @@ export default function EditorCanvas({
 
         newLines[lineIndex][mode].splice(insertPosition, 0, { x, y, type: 'anchor' });
         onLinesChange(newLines);
+        onCommit();
         return;
       }
 
@@ -292,11 +616,11 @@ export default function EditorCanvas({
         const isTail = pointIndex === anchorIndices[anchorIndices.length - 1];
 
         if (isHead || isTail) {
-          const pt = getSVGPoint(e.nativeEvent as unknown as MouseEvent);
+          const pt = getSVGPoint(e.nativeEvent);
           const x = Math.round(pt.x / 5) * 5;
           const y = Math.round(pt.y / 5) * 5;
 
-          const newLines = JSON.parse(JSON.stringify(lines)) as LineState[];
+          const newLines = structuredClone(lines);
 
           if (isHead) {
             newLines[lineIndex][mode].unshift({ x, y, type: 'anchor' });
@@ -306,15 +630,17 @@ export default function EditorCanvas({
             selectSingle(lineIndex, newLines[lineIndex][mode].length - 1);
           }
           onLinesChange(newLines);
+          onCommit();
           return;
         }
       }
 
       // Pen+ also allows dragging a single control point
       if (isControlPoint) {
-        const lineIndex = parseInt(target.getAttribute('data-line-index') || '0');
-        const pointIndex = parseInt(target.getAttribute('data-point-index') || '0');
-        if (lineIndex >= lines.length) return;
+        const lineIndex = readDataIndex(target, 'data-line-index');
+        const pointIndex = readDataIndex(target, 'data-point-index');
+        if (lineIndex < 0 || lineIndex >= lines.length) return;
+        if (pointIndex < 0) return;
         if (mirrorTargetMap.has(lineIndex)) return;
 
         const p = lines[lineIndex][mode][pointIndex];
@@ -329,10 +655,11 @@ export default function EditorCanvas({
     // --- Select tool ---
     if (activeTool === 'select') {
       if (isControlPoint) {
-        const lineIndex = parseInt(target.getAttribute('data-line-index') || '0');
-        const pointIndex = parseInt(target.getAttribute('data-point-index') || '0');
+        const lineIndex = readDataIndex(target, 'data-line-index');
+        const pointIndex = readDataIndex(target, 'data-point-index');
 
-        if (lineIndex >= lines.length) return;
+        if (lineIndex < 0 || lineIndex >= lines.length) return;
+        if (pointIndex < 0) return;
         if (mirrorTargetMap.has(lineIndex)) return;
 
         const key = makeKey(lineIndex, pointIndex);
@@ -362,7 +689,7 @@ export default function EditorCanvas({
       }
 
       // Click empty area or path → start marquee
-      const pt = getSVGPoint(e.nativeEvent as unknown as MouseEvent);
+      const pt = getSVGPoint(e.nativeEvent);
       marqueeAdditiveRef.current = e.shiftKey;
       startMarquee(pt.x, pt.y);
     }
@@ -371,10 +698,11 @@ export default function EditorCanvas({
   const handleMouseOver = (e: React.MouseEvent<SVGSVGElement>) => {
     const target = e.target as Element;
     if (target.classList.contains(styles.controlPoint)) {
-      const lineIndex = parseInt(target.getAttribute('data-line-index') || '0');
-      const pointIndex = parseInt(target.getAttribute('data-point-index') || '0');
+      const lineIndex = readDataIndex(target, 'data-line-index');
+      const pointIndex = readDataIndex(target, 'data-point-index');
 
-      if (lineIndex >= lines.length) return;
+      if (lineIndex < 0 || lineIndex >= lines.length) return;
+      if (pointIndex < 0) return;
 
       const anchorIndices = lines[lineIndex][mode]
         .map((p, i) => (p.type === 'anchor' ? i : -1))
@@ -398,12 +726,9 @@ export default function EditorCanvas({
 
     if (activeTool === 'pen-add') {
       if (target.classList.contains(styles.editorPath)) {
-        const lineIndex = parseInt(
-          target.getAttribute('data-line-index') ||
-            target.parentElement?.getAttribute('data-line-index') ||
-            '0'
-        );
-        const pt = getSVGPoint(e.nativeEvent as unknown as MouseEvent);
+        const lineIndex = readDataIndex(target, 'data-line-index');
+        if (lineIndex < 0 || lineIndex >= lines.length) return;
+        const pt = getSVGPoint(e.nativeEvent);
         const x = Math.round(pt.x / 5) * 5;
         const y = Math.round(pt.y / 5) * 5;
 
@@ -508,14 +833,15 @@ export default function EditorCanvas({
       });
       onLinesChangeRef.current(newLines);
     },
-    [computeSnap, setActiveGuides]
+    [computeSnap, setActiveGuides, getSVGPoint]
   );
 
   const handleMouseUp = useCallback(() => {
     setDraggedPoints([]);
     anchorKeyRef.current = null;
     clearGuides();
-  }, [clearGuides]);
+    onCommit();
+  }, [clearGuides, onCommit]);
 
   useEffect(() => {
     if (draggedPoints.length === 0) return;
@@ -529,8 +855,38 @@ export default function EditorCanvas({
     };
   }, [draggedPoints, handleMouseMove, handleMouseUp]);
 
+  const beginPivotDrag = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const onMove = (ev: MouseEvent) => {
+        const pt = getSVGPoint(ev);
+        const snapped = snapPivotToBoundingBox({ x: pt.x, y: pt.y }, bbox, PIVOT_SNAP_TOLERANCE);
+        const clamped = {
+          x: Math.max(PIVOT_BOUNDS_MIN, Math.min(PIVOT_BOUNDS_MAX, snapped.x)),
+          y: Math.max(PIVOT_BOUNDS_MIN, Math.min(PIVOT_BOUNDS_MAX, snapped.y)),
+        };
+        setPivotPos(clamped);
+      };
+      const onUp = () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+        pivotDragListenersRef.current = null;
+      };
+      pivotDragListenersRef.current = { onMove, onUp };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    },
+    [bbox, getSVGPoint]
+  );
+
   // Marquee drag listeners — bound only on start, unbound on end
   const isMarqueeing = marqueeRect !== null;
+  useEffect(() => {
+    if (!isMarqueeing) return;
+    document.body.classList.add('is-marqueeing');
+    return () => document.body.classList.remove('is-marqueeing');
+  }, [isMarqueeing]);
   useEffect(() => {
     if (!isMarqueeing) return;
 
@@ -559,6 +915,17 @@ export default function EditorCanvas({
   return (
     <div className={styles.editorArea}>
       <Toolbar activeTool={activeTool} onToolChange={setActiveTool} />
+      <TransformActions
+        activeTool={activeTool}
+        selectedCount={selectedLines.size}
+        onRotate={handleRotateSelection}
+        disabled={
+          rotateState.isRotating ||
+          translateState.isTranslating ||
+          scaleState.isScaling ||
+          draggedPoints.length > 0
+        }
+      />
       <svg
         ref={svgRef}
         className={`${styles.editorSvg} ${showCrosshairCursor ? styles.cursorCrosshair : ''}`}
@@ -587,10 +954,40 @@ export default function EditorCanvas({
         <g ref={activeLayerRef} id="active-layer"></g>
         <g ref={connectionLayerRef} id="connection-layer"></g>
 
-        <GuidesLayer guides={activeGuides} />
+        <GuidesLayer guides={[...activeGuides, ...groupGuides]} />
 
         <g ref={controlsLayerRef} id="controls-layer"></g>
         <g ref={marqueeLayerRef} id="marquee-layer"></g>
+
+        {activeTool === 'transform' && selectedLines.size > 0 && (
+          <SelectionBox
+            bbox={bbox}
+            pivot={effectivePivot}
+            onRotateZoneMouseDown={beginRotate}
+            onPivotMouseDown={beginPivotDrag}
+            onPivotDoubleClick={() => setPivotPos(null)}
+            onBboxMouseDown={beginTranslate}
+            onScaleHandleMouseDown={beginScale}
+          />
+        )}
+
+        {rotateState.isRotating && rotateState.cursorPos && (
+          <foreignObject
+            x={rotateState.cursorPos.x}
+            y={rotateState.cursorPos.y}
+            width="60"
+            height="20"
+            style={{ overflow: 'visible', pointerEvents: 'none' }}
+          >
+            <div className={styles.angleLabel}>
+              {rotateState.currentAngleDeg >= 0 ? '+' : ''}
+              {rotateState.isSnapping
+                ? Math.round(rotateState.currentAngleDeg)
+                : rotateState.currentAngleDeg.toFixed(1)}
+              °
+            </div>
+          </foreignObject>
+        )}
       </svg>
 
       <Button className={styles.btnReset} startIcon={<RotateCw />} onClick={onReset}>

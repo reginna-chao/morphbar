@@ -1,9 +1,10 @@
-import { Plus, Trash2, ArrowLeftRight, ArrowUpDown, LayoutTemplate } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import Button from './ui/Button';
-import TemplateModal from './TemplateModal';
+import { Plus, LayoutTemplate } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import Button from '@/components/ui/Button';
+import TemplateModal from '@/components/TemplateModal';
+import LineRow from '@/components/LineRow';
 import { createDefaultLine, getLineColor } from '@/utils/colors';
-import type { Lines, TemplateResult } from '../types';
+import type { Lines, TemplateResult } from '@/types';
 import styles from './LineManager.module.scss';
 
 interface LineManagerProps {
@@ -12,65 +13,58 @@ interface LineManagerProps {
   onLoadTemplate: (result: TemplateResult) => void;
 }
 
+type ActiveMenu = { kind: 'swap'; index: number } | null;
+
 const MAX_LINES = 10;
 const MIN_LINES = 1;
 
 export default function LineManager({ lines, onLinesChange, onLoadTemplate }: LineManagerProps) {
-  const [activeSwapMenu, setActiveSwapMenu] = useState<number | null>(null);
+  const [activeMenu, setActiveMenu] = useState<ActiveMenu>(null);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
 
-  // Close swap menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (!target.closest(`.${styles.swapContainer}`)) {
-        setActiveSwapMenu(null);
-      }
-    };
-
-    if (activeSwapMenu !== null) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [activeSwapMenu]);
-  const handleAddLine = () => {
+  const handleAddLine = useCallback(() => {
     if (lines.length >= MAX_LINES) return;
+    onLinesChange([...lines, createDefaultLine()]);
+  }, [lines, onLinesChange]);
 
-    const newLine = createDefaultLine();
-    onLinesChange([...lines, newLine]);
-  };
+  const handleDeleteLine = useCallback(
+    (index: number) => {
+      if (lines.length <= MIN_LINES) return;
+      onLinesChange(lines.filter((_, i) => i !== index));
+    },
+    [lines, onLinesChange]
+  );
 
-  const handleDeleteLine = (index: number) => {
-    if (lines.length <= MIN_LINES) return;
+  const handleReverseLine = useCallback(
+    (index: number) => {
+      const next = lines.map((l, i) =>
+        i === index ? { ...l, menu: [...l.menu].reverse(), close: [...l.close].reverse() } : l
+      );
+      onLinesChange(next);
+    },
+    [lines, onLinesChange]
+  );
 
-    const newLines = lines.filter((_, i) => i !== index);
-    onLinesChange(newLines);
-  };
+  const handleSwapLines = useCallback(
+    (index1: number, index2: number) => {
+      const menu1 = lines[index1].menu;
+      const menu2 = lines[index2].menu;
+      const next = lines.map((l, i) => {
+        if (i === index1) return { ...l, menu: menu2 };
+        if (i === index2) return { ...l, menu: menu1 };
+        return l;
+      });
+      onLinesChange(next);
+      setActiveMenu(null);
+    },
+    [lines, onLinesChange]
+  );
 
-  const handleReverseLine = (index: number) => {
-    const newLines = JSON.parse(JSON.stringify(lines));
-    // Reverse both menu and close states
-    newLines[index].menu.reverse();
-    newLines[index].close.reverse();
-    onLinesChange(newLines);
-  };
-
-  const handleSwapLines = (index1: number, index2: number) => {
-    const newLines = JSON.parse(JSON.stringify(lines));
-    // Only swap menu state, keep close state in original position
-    const tempMenu = newLines[index1].menu;
-    newLines[index1].menu = newLines[index2].menu;
-    newLines[index2].menu = tempMenu;
-    onLinesChange(newLines);
-    setActiveSwapMenu(null);
-  };
-
-  const toggleSwapMenu = (index: number) => {
-    setActiveSwapMenu(activeSwapMenu === index ? null : index);
-  };
+  const toggleSwapMenu = useCallback((index: number) => {
+    setActiveMenu((current) =>
+      current?.kind === 'swap' && current.index === index ? null : { kind: 'swap', index }
+    );
+  }, []);
 
   return (
     <div className={styles.lineManager}>
@@ -110,78 +104,24 @@ export default function LineManager({ lines, onLinesChange, onLoadTemplate }: Li
 
       <div className={styles.linesList}>
         {lines.map((line, index) => {
-          const lineColor = getLineColor(index, line.color);
+          const swapTargets = lines
+            .map((l, i) => ({ id: l.id, index: i, color: getLineColor(i, l.color) }))
+            .filter((t) => t.index !== index);
 
           return (
-            <div key={line.id} className={styles.lineItem}>
-              <div className={styles.lineInfo}>
-                <div className={styles.colorIndicator} style={{ backgroundColor: lineColor }} />
-                <span className={styles.lineName}>Line {index + 1}</span>
-                <span className={styles.pointCount}>
-                  {line.menu.filter((p) => p.type === 'anchor').length} points
-                </span>
-              </div>
-
-              <div className={styles.lineActions}>
-                <div className={styles.swapContainer}>
-                  <Button
-                    onClick={() => toggleSwapMenu(index)}
-                    variant="ghost"
-                    size="small"
-                    aria-label="Switch line position"
-                    data-tooltip-id="app-tooltip"
-                    data-tooltip-content="Switch line position"
-                    disabled={lines.length <= 1}
-                  >
-                    <ArrowUpDown size={16} />
-                  </Button>
-                  {activeSwapMenu === index && lines.length > 1 && (
-                    <div className={styles.swapMenu}>
-                      {lines.map((targetLine, targetIndex) => {
-                        if (targetIndex === index) return null;
-                        const targetColor = getLineColor(targetIndex, targetLine.color);
-                        return (
-                          <button
-                            key={targetLine.id}
-                            className={styles.swapMenuItem}
-                            onClick={() => handleSwapLines(index, targetIndex)}
-                          >
-                            <div
-                              className={styles.swapColorIndicator}
-                              style={{ backgroundColor: targetColor }}
-                            />
-                            <span>Line {targetIndex + 1}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-                <Button
-                  onClick={() => handleReverseLine(index)}
-                  variant="ghost"
-                  size="small"
-                  aria-label="Reverse line direction"
-                  data-tooltip-id="app-tooltip"
-                  data-tooltip-content="Reverse line direction"
-                >
-                  <ArrowLeftRight size={16} />
-                </Button>
-                <Button
-                  onClick={() => handleDeleteLine(index)}
-                  disabled={lines.length <= MIN_LINES}
-                  variant="ghost"
-                  size="small"
-                  aria-label={lines.length <= MIN_LINES ? 'Cannot delete last line' : 'Delete line'}
-                  data-tooltip-id="app-tooltip"
-                  data-tooltip-content={
-                    lines.length <= MIN_LINES ? 'Cannot delete last line' : 'Delete line'
-                  }
-                >
-                  <Trash2 size={16} />
-                </Button>
-              </div>
-            </div>
+            <LineRow
+              key={line.id}
+              line={line}
+              index={index}
+              totalLines={lines.length}
+              minLines={MIN_LINES}
+              swapTargets={swapTargets}
+              swapOpen={activeMenu?.kind === 'swap' && activeMenu.index === index}
+              onToggleSwap={() => toggleSwapMenu(index)}
+              onSwap={(targetIndex) => handleSwapLines(index, targetIndex)}
+              onReverse={() => handleReverseLine(index)}
+              onDelete={() => handleDeleteLine(index)}
+            />
           );
         })}
       </div>

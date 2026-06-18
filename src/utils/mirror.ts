@@ -1,6 +1,6 @@
 import type { LineState, PathPoint, MirrorGroup } from '@/types';
 
-const SVG_VIEWBOX_SIZE = 100;
+export const SVG_VIEWBOX_SIZE = 100;
 
 export function applyMirror(
   sourcePoints: PathPoint[],

@@ -12,9 +12,14 @@ const clamp = (n: number, min: number, max: number): number => Math.min(max, Mat
 interface BorderSectionProps {
   styleConfig: StyleConfig;
   update: (patch: Partial<StyleConfig>) => void;
+  onStyleConfigCommit: () => void;
 }
 
-export default function BorderSection({ styleConfig, update }: BorderSectionProps): ReactElement {
+export default function BorderSection({
+  styleConfig,
+  update,
+  onStyleConfigCommit,
+}: BorderSectionProps): ReactElement {
   const parseBorderWidth = (raw: string): number => {
     const parsed = parseInt(raw);
     if (Number.isNaN(parsed)) return BORDER_WIDTH_MIN;
@@ -40,6 +45,7 @@ export default function BorderSection({ styleConfig, update }: BorderSectionProp
           max={BORDER_WIDTH_MAX}
           value={styleConfig.borderWidth}
           onChange={(e) => update({ borderWidth: parseBorderWidth(e.target.value) })}
+          onBlur={onStyleConfigCommit}
           className={styles.numberInput}
         />
       </div>
@@ -51,6 +57,7 @@ export default function BorderSection({ styleConfig, update }: BorderSectionProp
           type="color"
           value={styleConfig.borderColor}
           onChange={(e) => update({ borderColor: e.target.value })}
+          onBlur={onStyleConfigCommit}
           className={styles.colorInput}
         />
       </div>
@@ -64,6 +71,7 @@ export default function BorderSection({ styleConfig, update }: BorderSectionProp
           max={BORDER_RADIUS_MAX}
           value={styleConfig.borderRadius}
           onChange={(e) => update({ borderRadius: parseBorderRadius(e.target.value) })}
+          onBlur={onStyleConfigCommit}
           className={styles.numberInput}
         />
       </div>

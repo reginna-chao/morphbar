@@ -11,24 +11,29 @@ const clamp = (n: number, min: number, max: number): number => Math.min(max, Mat
 interface StrokeSectionProps {
   styleConfig: StyleConfig;
   onStyleConfigChange: (config: StyleConfig) => void;
+  onStyleConfigCommit: () => void;
   update: (patch: Partial<StyleConfig>) => void;
   lines: Lines;
   onLinesChange: (lines: Lines) => void;
   updateLine: (index: number, patch: Partial<LineStyleOverride>) => void;
+  commitLine: (index: number, patch: Partial<LineStyleOverride>) => void;
 }
 
 export default function StrokeSection({
   styleConfig,
   onStyleConfigChange,
+  onStyleConfigCommit,
   update,
   lines,
   onLinesChange,
   updateLine,
+  commitLine,
 }: StrokeSectionProps): ReactElement {
   const handlePerLineColorToggle = (checked: boolean): void => {
     if (!checked) {
       // Toggle OFF: just flip the flag; preserve existing line.color values.
       update({ perLineColor: false });
+      onStyleConfigCommit();
       return;
     }
 
@@ -39,11 +44,13 @@ export default function StrokeSection({
     );
     onStyleConfigChange({ ...styleConfig, perLineColor: true });
     onLinesChange(seededLines);
+    onStyleConfigCommit();
   };
 
   const handlePerLineWidthToggle = (checked: boolean): void => {
     if (!checked) {
       update({ perLineWidth: false });
+      onStyleConfigCommit();
       return;
     }
 
@@ -52,6 +59,7 @@ export default function StrokeSection({
     );
     onStyleConfigChange({ ...styleConfig, perLineWidth: true });
     onLinesChange(seededLines);
+    onStyleConfigCommit();
   };
 
   const parseStrokeWidth = (raw: string): number => {
@@ -71,6 +79,7 @@ export default function StrokeSection({
           type="color"
           value={styleConfig.strokeColor}
           onChange={(e) => update({ strokeColor: e.target.value })}
+          onBlur={onStyleConfigCommit}
           className={styles.colorInput}
         />
       </div>
@@ -95,6 +104,7 @@ export default function StrokeSection({
                   type="color"
                   value={value}
                   onChange={(e) => updateLine(index, { color: e.target.value })}
+                  onBlur={(e) => commitLine(index, { color: e.target.value })}
                   className={styles.colorInput}
                 />
               </label>
@@ -114,6 +124,8 @@ export default function StrokeSection({
             step="1"
             value={styleConfig.strokeWidth}
             onChange={(e) => update({ strokeWidth: parseStrokeWidth(e.target.value) })}
+            onPointerUp={onStyleConfigCommit}
+            onKeyUp={onStyleConfigCommit}
             className={styles.slider}
           />
           <input
@@ -122,6 +134,7 @@ export default function StrokeSection({
             max={STROKE_WIDTH_MAX}
             value={styleConfig.strokeWidth}
             onChange={(e) => update({ strokeWidth: parseStrokeWidth(e.target.value) })}
+            onBlur={onStyleConfigCommit}
             aria-label="Stroke width value"
             className={styles.numberInput}
           />
@@ -151,6 +164,9 @@ export default function StrokeSection({
                   value={value}
                   onChange={(e) =>
                     updateLine(index, { strokeWidth: parseStrokeWidth(e.target.value) })
+                  }
+                  onBlur={(e) =>
+                    commitLine(index, { strokeWidth: parseStrokeWidth(e.target.value) })
                   }
                   className={styles.numberInput}
                 />

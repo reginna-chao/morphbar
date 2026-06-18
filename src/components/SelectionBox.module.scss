@@ -1,0 +1,72 @@
+.bboxDragArea {
+  fill: transparent;
+  pointer-events: all;
+  cursor: move;
+}
+
+.selectionBox {
+  fill: none;
+  stroke: var(--selection-color);
+  stroke-width: 0.6;
+  stroke-dasharray: 2, 1.5;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.rotateZone {
+  fill: transparent;
+  pointer-events: all;
+  cursor: $rotate-cursor 12 12, grab;
+}
+
+.selectionPivot {
+  stroke: var(--selection-color);
+  stroke-width: 0.8;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+  transition:
+    stroke 0.15s,
+    stroke-width 0.15s;
+}
+
+.selectionPivotHit {
+  fill: transparent;
+  pointer-events: all;
+  cursor: move;
+}
+
+.pivot {
+  &:hover .selectionPivot {
+    stroke: white;
+    stroke-width: 1.5;
+  }
+}
+
+.scaleHandle {
+  fill: white;
+  stroke: var(--selection-color);
+  stroke-width: 0.4;
+  vector-effect: non-scaling-stroke;
+  pointer-events: all;
+  transition: fill 0.15s;
+
+  &:hover {
+    fill: var(--selection-color);
+  }
+}
+
+.cursorNwse {
+  cursor: nwse-resize;
+}
+
+.cursorNesw {
+  cursor: nesw-resize;
+}
+
+.cursorNs {
+  cursor: ns-resize;
+}
+
+.cursorEw {
+  cursor: ew-resize;
+}

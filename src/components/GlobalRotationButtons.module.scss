@@ -1,0 +1,28 @@
+@use '@/styles/variables.scss' as *;
+
+.row {
+  display: flex;
+  gap: 6px;
+}
+
+.button {
+  @include flex-center;
+  flex: 1;
+  height: 32px;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: var(--input-bg);
+    color: var(--text-color);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--selection-color);
+    outline-offset: 2px;
+  }
+}

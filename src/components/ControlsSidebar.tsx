@@ -3,6 +3,7 @@ import SegmentedControl from './ui/SegmentedControl';
 import LineManager from './LineManager';
 import MirrorManager from './MirrorManager';
 import StylePanel from './StylePanel';
+import GlobalRotationButtons from './GlobalRotationButtons';
 import type { Mode, Lines, MirrorGroup, SizeConfig, StyleConfig, TemplateResult } from '@/types';
 import styles from './ControlsSidebar.module.scss';
 import { Menu, X } from 'lucide-react';
@@ -19,8 +20,17 @@ interface ControlsSidebarProps {
   onMirrorGroupsChange: (groups: MirrorGroup[]) => void;
   sizeConfig: SizeConfig;
   onSizeConfigChange: (config: SizeConfig) => void;
+  // Pushes the current sizeConfig (horizontalShift slice) onto the history
+  // stack — called on slider release / number input blur.
+  onSizeConfigCommit: () => void;
   styleConfig: StyleConfig;
   onStyleConfigChange: (config: StyleConfig) => void;
+  // Pushes the current styleConfig onto the history stack — called after
+  // discrete style changes (toggles) and on color/range pointer release.
+  onStyleConfigCommit: () => void;
+  onRotateAll: (deg: number) => void;
+  rotateCurrentModeOnly: boolean;
+  onRotateCurrentModeOnlyChange: (value: boolean) => void;
 }
 
 export default function ControlsSidebar({
@@ -34,8 +44,13 @@ export default function ControlsSidebar({
   onMirrorGroupsChange,
   sizeConfig,
   onSizeConfigChange,
+  onSizeConfigCommit,
   styleConfig,
   onStyleConfigChange,
+  onStyleConfigCommit,
+  onRotateAll,
+  rotateCurrentModeOnly,
+  onRotateCurrentModeOnlyChange,
 }: ControlsSidebarProps) {
   const handleHorizontalShiftChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,13 +92,37 @@ export default function ControlsSidebar({
         <StylePanel
           styleConfig={styleConfig}
           onStyleConfigChange={onStyleConfigChange}
+          onStyleConfigCommit={onStyleConfigCommit}
           lines={lines}
           onLinesChange={onLinesMetaChange}
+          onLinesCommit={onLinesChange}
         />
       </div>
 
       <div className={styles.controlGroup}>
         <h2>Animation Settings</h2>
+
+        <div
+          className={styles.inputGroup}
+          role="group"
+          aria-label="Rotate all lines around canvas center"
+        >
+          <label aria-hidden="true">Rotate All</label>
+          <GlobalRotationButtons onRotate={onRotateAll} />
+          <label
+            className={styles.checkboxLabel}
+            data-tooltip-id="app-tooltip"
+            data-tooltip-content="When checked, rotation only affects the active mode. Useful with mirror groups."
+          >
+            <input
+              type="checkbox"
+              checked={rotateCurrentModeOnly}
+              onChange={(e) => onRotateCurrentModeOnlyChange(e.target.checked)}
+            />
+            <span>Rotate current mode only</span>
+          </label>
+        </div>
+
         <div className={styles.inputGroup}>
           <label htmlFor="horizontalShift">Horizontal Shift</label>
           <div className={styles.sliderGroup}>
@@ -95,6 +134,8 @@ export default function ControlsSidebar({
               step="1"
               value={sizeConfig.horizontalShift}
               onChange={handleHorizontalShiftChange}
+              onPointerUp={onSizeConfigCommit}
+              onKeyUp={onSizeConfigCommit}
               className={styles.slider}
             />
             <input
@@ -103,6 +144,7 @@ export default function ControlsSidebar({
               max="200"
               value={sizeConfig.horizontalShift}
               onChange={handleHorizontalShiftChange}
+              onBlur={onSizeConfigCommit}
               aria-label="Horizontal shift value"
               className={styles.numberInput}
             />
