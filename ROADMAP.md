@@ -465,6 +465,43 @@ MorphBar 是一個漢堡選單圖示動畫生成器，允許使用者視覺化�
 
 新增檔案：`src/components/GlobalRotationButtons.tsx` + SCSS
 
+#### Sprint 5.7 — Scale polish ✅ 已完成
+
+- ✅ Scale 錨點修正：用 unpadded geometry corner + virtual handle offset，對角不再位移
+- ✅ Alt 對稱縮放：錨點切到 bbox 中心，雙邊同時動
+- ✅ Shift + Alt：等比 + 對稱
+- ✅ Scale handle 視覺尺寸 1.5 → 1.0
+
+#### Sprint 5.8 — 整體旋轉「current mode only」 ✅ 已完成
+
+- ✅ 起初採方案 B（Shift modifier）；使用者最終偏好方案 A（checkbox）
+- ✅ ControlsSidebar > Animation Settings > Rotate All group 內加「Rotate current mode only」checkbox
+- ✅ App.tsx 加 `rotateCurrentModeOnly` state（UI preference，不入 history）
+- ✅ 勾選時 `handleRotateAll` 把 `sourceIndices` 改傳 `new Set()` 給 `rotateLinesAroundPivot` → mirror source 也只轉當前 mode
+- ✅ `rotateLinesAroundPivot` / `applyMirrorSync` / geometry 均未修改
+
+#### Sprint 5.9 — Group-level alignment guides ✅ 已完成
+
+- ✅ 新增 `useGroupAlignmentGuides` hook；舊的 `useAlignmentGuides`（點層級）保留不動
+- ✅ Translate 與 Scale 共用對齊邏輯
+- ✅ 選取物 6 個 reference（left/center/right + top/center/bottom），對齊目標含 canvas 中線 + 非選取線段 bbox 6 個值
+- ✅ Tolerance 1.5 SVG units；center 優先；fallback 5px 網格
+- ✅ Mirror target 算進對齊目標；canvas 邊緣 (0/100) 不算
+- ✅ Alt 對稱縮放跳過 snap（避免單邊 snap 干擾對稱意圖）
+- ✅ Correctness fix：跳過無 anchor 的線段、padded bbox 中心精確、邊緣只在 raw extent > 0 時加入
+
+新增檔案：`src/hooks/useGroupAlignmentGuides.ts`
+
+#### Sprint 5.10 — Figma-style rotation interaction ✅ 已完成
+
+- ✅ 移除 bbox 上方的旋轉專屬 handle（圓形 + 連接線）
+- ✅ 新增 4 個 corner-outside 6×6 SVG units invisible hit zones（mouse-only，無 role/tabIndex）
+- ✅ Cursor `$rotate-cursor` data URI；`body.is-rotating` 全域鎖維持
+- ✅ Paint order：rotateZones → scaleHandles → pivot（scale handle 贏 corner sliver 重疊）
+- ✅ 旋轉邏輯（`useRotateInteraction`、15° snap、9 點 pivot snap）不變
+- ✅ 角度 label 仍顯示（`rotateState.isSnapping` 觸發 integer / 1-decimal 切換）
+- ✅ Tiny bbox guard 移除（rotate zones 與邊中 handles 幾何不重疊，guard 多餘且會讓單一水平線段失去旋轉觸發）
+
 **9. 形狀生成** ⭐⭐⭐⭐⭐⭐⭐⭐
 
 - **支援形狀**：
@@ -713,13 +750,17 @@ src/
 
 ### v1.5.0 - Transform 工具系統 ✅
 
-- Sprint 5 功能全部完成（5.1–5.6）
+- Sprint 5 功能全部完成（5.1–5.10）
 - Sprint 5.1 旋轉（Rotate）：Canvas 直接操作、Figma 風格選擇框 + handle + pivot、15° snap、9 點 pivot snap、Figma 藍 (`#0d99ff`) 配色
 - Sprint 5.2 移動（Translate）：bbox 內拖曳；5px grid + 對齊輔助線 snap；Shift 軸鎖；工具改名 Rotate → Transform，icon 改 Move
 - Sprint 5.3 縮放（Scale）：8 個 handles、Figma-style 對角錨點、Shift 等比、允許負縮放、direction-specific cursor lock
 - Sprint 5.4 Undo / Redo：useHistory + useDesignHistory；Ctrl/Cmd+Z、Ctrl/Cmd+Shift+Z、Ctrl+Y；浮動按鈕；19 commit boundaries；in-flight drag 守衛
 - Sprint 5.5 快捷旋轉 + 角度輸入：TransformActions 浮動面板，contextual 顯示
 - Sprint 5.6 整體旋轉：ControlsSidebar > Animation Settings 三顆按鈕，繞 canvas 中心
+- Sprint 5.7 Scale polish：unpadded geometry anchor + virtual handle offset 修正對角位移；Alt 對稱縮放；handle 尺寸縮 2/3
+- Sprint 5.8 整體旋轉「current mode only」checkbox（先 B 後 A），mirror source 也只轉當前 mode
+- Sprint 5.9 對齊輔助線重做：6 reference points（left/center/right + top/center/bottom），translate 與 scale 共用 `useGroupAlignmentGuides`
+- Sprint 5.10 Figma 風旋轉觸發：移除專屬 handle，corner-outside 6 SVG units 範圍顯示 rotate cursor
 - 延後項目（B1–B27）紀錄於 `REVIEW_BACKLOG.md`
 
 ---

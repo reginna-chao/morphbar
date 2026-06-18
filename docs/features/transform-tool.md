@@ -249,6 +249,80 @@ bl ── bc ── br
 
 ---
 
+## Sprint 5.9 — Group-level Alignment Guides（對齊輔助線重做）
+
+### 動機
+Sprint 5.2 的 translate snap 用 bbox top-left 當單一參考點，這不是設計工具的慣例（通常用物件中心或多個 reference）。Scale 則完全沒有對齊輔助線。本 sprint 重建對齊系統，translate 與 scale 共用。
+
+### 新 hook：`src/hooks/useGroupAlignmentGuides.ts`
+**保留**舊的 `useAlignmentGuides`（給點層級拖曳用），不修改。
+
+### 選取物的 6 個 reference 值
+- **x 軸**：left edge / **center** / right edge
+- **y 軸**：top edge / **center** / bottom edge
+
+### 對齊目標（在 drag start 時計算一次）
+- Canvas 水平中線 `y = 50`、垂直中線 `x = 50`
+- 每條**非選取**線段的 bbox：left / center / right + top / center / bottom（共 6 個值）
+- Mirror target 線段算進去（有實際幾何位置）
+- Canvas 邊緣 (0/100) **不算**
+
+### 規則
+- **Tolerance**：1.5 SVG units
+- **優先序**：center 對 center > edge 對 edge；同類比距離；center reference 永遠贏（priority logic）
+- **Translate snap**：6 個 reference 全部檢查，找最佳對齊，調整 dx/dy；未對齊的軸 fallback 5px 網格
+- **Scale snap**：只檢查**正在動的那一邊**（依 handle id 對應 `MOVING_EDGES`）；Alt 對稱縮放時**跳過** snap（單邊 snap 在對稱情境會強迫挑側，違反使用者意圖）
+
+### 視覺
+重用既有 `<GuidesLayer>`，輔助線通過匹配位置橫跨全 canvas；canvas 中心線用 `.guideLineCenter` 樣式區別。
+
+### Degenerate 線段處理
+- 無 anchor 的線段：跳過（避免污染 `(0, 0)` target）
+- 單 anchor 線段：只 emit 中心點（padding 對稱 → center 精確）
+- Collinear 線段（rawWidth=0 或 rawHeight=0）：只 emit 中心點 + 另一軸的 left/right 或 top/bottom
+
+### 整合
+- `useTranslateInteraction`：移除 `pivot` 參數（無用）；改用 `snapTranslate`
+- `useScaleInteraction`：新增 `snapScale`；Alt 時不呼叫
+- `EditorCanvas`：用 ref bridges 解 hook 依賴循環；merge `[...activeGuides, ...groupGuides]` 給 `<GuidesLayer>`
+
+---
+
+## Sprint 5.10 — Figma-style Rotation Interaction（旋轉觸發改造）
+
+### 動機
+原本 Sprint 5.1 的旋轉專屬 handle（bbox 上方圓形 + 連接線）使用者覺得難用。改為 Figma 慣例：滑鼠移到角落**外側**時 cursor 變旋轉 icon。
+
+### 移除
+- bbox 上方的旋轉 handle 圓形 + 連接線
+- SCSS：`.selectionHandle` / `.selectionHandleSnapping` / `.selectionConnector`
+- SelectionBox 的 `isSnapping` prop（無視覺 handle 可變色）
+
+### 新增：4 個 corner-outside hit zones
+- 每個 zone 是 6×6 SVG units 的透明 `<rect>`
+- 位置：padded bbox 4 個角落**對外**延伸（tl 在 `(left-6, top-6)`、tr 在 `(right, top-6)` 等）
+- Class `.rotateZone`：`fill: transparent; pointer-events: all; cursor: $rotate-cursor`
+- 4 個 zone 共用同一個 `onRotateZoneMouseDown` handler
+- **無 keyboard handler**（mouse-only 互動，與 Figma 一致）；keyboard 旋轉走 TransformActions 快捷按鈕 / 角度輸入
+
+### Paint order（重要）
+`bboxDragArea → selectionBox border → rotateZones → scaleHandles → pivot group`
+
+Rotate zone 與 corner scale handle 有 1×1 sliver 重疊（在 padded corner）；scale handle 後畫，所以 hit-test 贏。**邊中 scale handle**（tc/bc/ml/mr）位於 bbox 邊中點，與 corner-outside rotate zone 幾何不重疊。
+
+### Tiny bbox（去掉的 guard）
+原本想加閾值「padded width/height < 12 不顯示 zones」，但實測發現**單一水平線段 padded height=7 < 12** 會讓 rotation 完全消失。事實上 rotate zones 與邊中 scale handles 永不重疊（位置不同），加上 Z-order 處理 corner sliver，guard 完全不必要。**移除**。
+
+### 既有功能保留
+- `useRotateInteraction` 內部邏輯、15° snap、起點 ≈ pivot 守衛、Pivot 拖曳、9 點吸附
+- 角度 label（拖曳時跟手顯示，integer at snap / 1-decimal otherwise）
+- `body.is-rotating` 全域 cursor lock
+
+### Sprint 5.1 段落注意
+本文件第 81–87 行描述「旋轉 handle 位置 bbox 上方 8 SVG units、圓形 r=2.5」**已被 5.10 移除**。當前旋轉觸發機制以本節為準。
+
+---
+
 ## 重要決策記錄（按時序）
 
 | 日期 | 決策 | 來源 |
@@ -273,6 +347,9 @@ bl ── bc ── br
 | 2026-05-22 | Scale 加 Alt = 對稱縮放（從 bbox 中心） | 使用者要求 |
 | 2026-05-22 | Scale handle 視覺尺寸 1.5 → 1.0（2/3 縮小） | 使用者偏好 |
 | 2026-05-22 | 整體旋轉先採方案 B (Shift modifier)，後決定改 A (checkbox) | 使用者偏好顯性 UI 開關 |
+| 2026-05-29 | 對齊輔助線改採 6 個 bbox reference（left/center/right + top/center/bottom），translate 與 scale 共用；Mirror target 算進對齊目標 | 使用者指出原本 top-left 基準不符慣例 |
+| 2026-05-29 | 旋轉觸發改 Figma 風：移除專屬 handle，corner-outside 6 SVG units 範圍內顯示 rotate cursor | 使用者實測覺得專屬 handle 難用 |
+| 2026-05-29 | Rotate zones 無 tiny-bbox guard：rotate zones 與邊中 scale handles 幾何不重疊，guard 多餘且會讓單一水平線段消失旋轉觸發 | 實測 bug：水平線段選取時 rotate zones 不顯示 |
 
 ---
 
@@ -282,7 +359,7 @@ bl ── bc ── br
 |------|--------|
 | Transform 工具 + hover 線段 path | pointer |
 | Hover bbox interior（`.bboxDragArea`） | move |
-| Hover rotation handle | 自訂 RotateCw SVG（白色填、黑色外框，深淺皆可見） |
+| Hover rotate zone（corner-outside 6 SVG units，Sprint 5.10） | 自訂 RotateCw SVG（白色填、黑色外框，深淺皆可見） |
 | Drag rotation 期間 | 同上（透過 `body.is-rotating` 全域鎖） |
 | Drag translation 期間 | grabbing |
 | Drag scale 期間 | nwse-resize / nesw-resize / ns-resize / ew-resize（依 handle 方向） |
