@@ -7,6 +7,7 @@ import GuidesLayer from './GuidesLayer';
 import SelectionBox from './SelectionBox';
 import { toastOptions } from '@/config/toast';
 import { useAlignmentGuides } from '@/hooks/useAlignmentGuides';
+import { useGroupAlignmentGuides } from '@/hooks/useGroupAlignmentGuides';
 import { useBoxSelection, makeKey, parseKey } from '@/hooks/useBoxSelection';
 import { useCanvasRender } from '@/hooks/useCanvasRender';
 import { useLineSelection } from '@/hooks/useLineSelection';
@@ -17,8 +18,17 @@ import {
   computeMultiLineBoundingBox,
   rotateLinesAroundPivot,
   snapPivotToBoundingBox,
+  type BoundingBox,
 } from '@/utils/geometry';
-import type { Mode, LineState, DraggedPoint, Tool, LineIndex, Point } from '@/types';
+import type {
+  AlignmentGuide,
+  Mode,
+  LineState,
+  DraggedPoint,
+  Tool,
+  LineIndex,
+  Point,
+} from '@/types';
 import styles from './EditorCanvas.module.scss';
 import { RotateCw } from 'lucide-react';
 
@@ -165,20 +175,62 @@ export default function EditorCanvas({
     draggedPoints
   );
 
+  // Refs let useGroupAlignmentGuides be declared after the interaction hooks (it
+  // needs their isTranslating/isScaling flags) while still feeding its snap
+  // callbacks back into them. Both interaction hooks read args via argsRef so
+  // updating these wrappers per-render is safe.
+  type SnapTranslateFn = (
+    originBbox: BoundingBox,
+    rawDx: number,
+    rawDy: number,
+    lockedAxis: 'x' | 'y' | null
+  ) => { dx: number; dy: number; guides: AlignmentGuide[] };
+  type SnapScaleFn = (
+    originBbox: BoundingBox,
+    sx: number,
+    sy: number,
+    anchor: Point,
+    movingEdges: { movingX: 'left' | 'right' | null; movingY: 'top' | 'bottom' | null }
+  ) => { sx: number; sy: number; guides: AlignmentGuide[] };
+
+  const snapTranslateRef = useRef<SnapTranslateFn | null>(null);
+  const snapScaleRef = useRef<SnapScaleFn | null>(null);
+  const setGroupGuidesRef = useRef<((guides: AlignmentGuide[]) => void) | null>(null);
+  const clearGroupGuidesRef = useRef<(() => void) | null>(null);
+
+  const snapTranslateBridge = useCallback<SnapTranslateFn>(
+    (originBbox, rawDx, rawDy, lockedAxis) => {
+      const fn = snapTranslateRef.current;
+      if (!fn) return { dx: rawDx, dy: rawDy, guides: [] };
+      return fn(originBbox, rawDx, rawDy, lockedAxis);
+    },
+    []
+  );
+  const snapScaleBridge = useCallback<SnapScaleFn>((originBbox, sx, sy, anchor, movingEdges) => {
+    const fn = snapScaleRef.current;
+    if (!fn) return { sx, sy, guides: [] };
+    return fn(originBbox, sx, sy, anchor, movingEdges);
+  }, []);
+  const setGroupGuidesBridge = useCallback((guides: AlignmentGuide[]) => {
+    setGroupGuidesRef.current?.(guides);
+  }, []);
+  const clearGroupGuidesBridge = useCallback(() => {
+    clearGroupGuidesRef.current?.();
+  }, []);
+
   const { state: translateState, beginTranslate } = useTranslateInteraction({
     selected: selectedLines,
     sourceIndices,
     mode,
     lines,
-    pivot: effectivePivot,
     pivotPos,
     setPivotPos,
     onLinesChange,
     onCommit,
     getSVGPoint,
-    computeSnap,
-    setActiveGuides,
-    clearGuides,
+    snapTranslate: snapTranslateBridge,
+    setActiveGuides: setGroupGuidesBridge,
+    clearGuides: clearGroupGuidesBridge,
   });
 
   const { state: scaleState, beginScale } = useScaleInteraction({
@@ -191,6 +243,32 @@ export default function EditorCanvas({
     onLinesChange,
     onCommit,
     getSVGPoint,
+    snapScale: snapScaleBridge,
+    setActiveGuides: setGroupGuidesBridge,
+    clearGuides: clearGroupGuidesBridge,
+  });
+
+  const {
+    activeGuides: groupGuides,
+    setActiveGuides: setGroupGuides,
+    clearGuides: clearGroupGuides,
+    snapTranslate,
+    snapScale,
+  } = useGroupAlignmentGuides(
+    lines,
+    mode,
+    selectedLines,
+    translateState.isTranslating || scaleState.isScaling
+  );
+
+  // Refresh ref bridges after commit (not during render) so the interaction
+  // hooks read the latest snap closures. Intentionally no dep array — runs
+  // every render, cheaper than risking stale refs.
+  useEffect(() => {
+    snapTranslateRef.current = snapTranslate;
+    snapScaleRef.current = snapScale;
+    setGroupGuidesRef.current = setGroupGuides;
+    clearGroupGuidesRef.current = clearGroupGuides;
   });
 
   const handleRotateSelection = useCallback(
@@ -876,7 +954,7 @@ export default function EditorCanvas({
         <g ref={activeLayerRef} id="active-layer"></g>
         <g ref={connectionLayerRef} id="connection-layer"></g>
 
-        <GuidesLayer guides={activeGuides} />
+        <GuidesLayer guides={[...activeGuides, ...groupGuides]} />
 
         <g ref={controlsLayerRef} id="controls-layer"></g>
         <g ref={marqueeLayerRef} id="marquee-layer"></g>

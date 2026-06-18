@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { computeMultiLineBoundingBox, translateLines, type BoundingBox } from '@/utils/geometry';
 import type { AlignmentGuide, LineState, Mode, Point } from '@/types';
 
-interface SnapResult {
-  x: number;
-  y: number;
+interface TranslateSnapResult {
+  dx: number;
+  dy: number;
   guides: AlignmentGuide[];
 }
 
@@ -13,13 +13,17 @@ interface UseTranslateInteractionArgs {
   sourceIndices: Set<number>;
   mode: Mode;
   lines: LineState[];
-  pivot: Point;
   pivotPos: Point | null;
   setPivotPos: (p: Point | null) => void;
   onLinesChange: (lines: LineState[]) => void;
   onCommit?: () => void;
   getSVGPoint: (e: MouseEvent) => DOMPoint;
-  computeSnap: (x: number, y: number, lockedAxis: 'x' | 'y' | null) => SnapResult;
+  snapTranslate: (
+    originBbox: BoundingBox,
+    rawDx: number,
+    rawDy: number,
+    lockedAxis: 'x' | 'y' | null
+  ) => TranslateSnapResult;
   setActiveGuides: (guides: AlignmentGuide[]) => void;
   clearGuides: () => void;
 }
@@ -116,13 +120,9 @@ export function useTranslateInteraction(
         }
       }
 
-      const bbox = originBboxRef.current;
-      const candidateX = bbox.x + useDx;
-      const candidateY = bbox.y + useDy;
-
-      const snap = argsRef.current.computeSnap(candidateX, candidateY, lockedAxis);
-      const dx = snap.x - bbox.x;
-      const dy = snap.y - bbox.y;
+      const snap = argsRef.current.snapTranslate(originBboxRef.current, useDx, useDy, lockedAxis);
+      const dx = snap.dx;
+      const dy = snap.dy;
 
       argsRef.current.setActiveGuides(snap.guides);
 

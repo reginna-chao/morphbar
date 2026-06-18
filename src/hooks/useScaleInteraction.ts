@@ -1,8 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { computeMultiLineBoundingBox, scaleLines, type BoundingBox } from '@/utils/geometry';
-import type { LineState, Mode, Point } from '@/types';
+import type { AlignmentGuide, LineState, Mode, Point } from '@/types';
 
 export type ScaleHandle = 'tl' | 'tc' | 'tr' | 'ml' | 'mr' | 'bl' | 'bc' | 'br';
+
+interface ScaleMovingEdges {
+  movingX: 'left' | 'right' | null;
+  movingY: 'top' | 'bottom' | null;
+}
+
+interface ScaleSnapResult {
+  sx: number;
+  sy: number;
+  guides: AlignmentGuide[];
+}
+
+const MOVING_EDGES: Record<ScaleHandle, ScaleMovingEdges> = {
+  tl: { movingX: 'left', movingY: 'top' },
+  tc: { movingX: null, movingY: 'top' },
+  tr: { movingX: 'right', movingY: 'top' },
+  ml: { movingX: 'left', movingY: null },
+  mr: { movingX: 'right', movingY: null },
+  bl: { movingX: 'left', movingY: 'bottom' },
+  bc: { movingX: null, movingY: 'bottom' },
+  br: { movingX: 'right', movingY: 'bottom' },
+};
 
 const CORNER_HANDLES: ReadonlySet<ScaleHandle> = new Set(['tl', 'tr', 'bl', 'br']);
 const HORIZONTAL_AXIS_HANDLES: ReadonlySet<ScaleHandle> = new Set([
@@ -33,6 +55,15 @@ interface UseScaleInteractionArgs {
   onLinesChange: (lines: LineState[]) => void;
   onCommit?: () => void;
   getSVGPoint: (e: MouseEvent) => DOMPoint;
+  snapScale: (
+    originBbox: BoundingBox,
+    sx: number,
+    sy: number,
+    anchor: Point,
+    movingEdges: ScaleMovingEdges
+  ) => ScaleSnapResult;
+  setActiveGuides: (guides: AlignmentGuide[]) => void;
+  clearGuides: () => void;
 }
 
 export interface ScaleInteractionState {
@@ -219,6 +250,19 @@ export function useScaleInteraction(args: UseScaleInteractionArgs): UseScaleInte
         sy = factor * (sy < 0 ? -1 : 1);
       }
 
+      // Alt = symmetric scale around center. Both sides of the bbox move, so a
+      // single snap target on one edge would arbitrarily pick a side — skip the
+      // group-alignment snap and let the user keep precise control.
+      if (!ev.altKey) {
+        const movingEdges = MOVING_EDGES[activeHandle];
+        const snap = argsRef.current.snapScale(bbox, sx, sy, anchor, movingEdges);
+        sx = snap.sx;
+        sy = snap.sy;
+        argsRef.current.setActiveGuides(snap.guides);
+      } else {
+        argsRef.current.setActiveGuides([]);
+      }
+
       const next = scaleLines(
         origin,
         selectedRef.current,
@@ -245,6 +289,7 @@ export function useScaleInteraction(args: UseScaleInteractionArgs): UseScaleInte
       activeListenersRef.current = null;
       originLinesRef.current = null;
       handleRef.current = null;
+      argsRef.current.clearGuides();
       setState({ isScaling: false, activeHandle: null });
       argsRef.current.onCommit?.();
     };
