@@ -963,8 +963,7 @@ export default function EditorCanvas({
           <SelectionBox
             bbox={bbox}
             pivot={effectivePivot}
-            isSnapping={rotateState.isSnapping}
-            onRotateHandleMouseDown={beginRotate}
+            onRotateZoneMouseDown={beginRotate}
             onPivotMouseDown={beginPivotDrag}
             onPivotDoubleClick={() => setPivotPos(null)}
             onBboxMouseDown={beginTranslate}

@@ -3,11 +3,10 @@ import { SELECTION_PADDING } from '@/utils/geometry';
 import type { ScaleHandle } from '@/hooks/useScaleInteraction';
 import styles from './SelectionBox.module.scss';
 
-const HANDLE_OFFSET = 8;
-const HANDLE_RADIUS = 2.5;
 const PIVOT_ARM = 4;
 const PIVOT_HIT_RADIUS = 4;
 const HANDLE_SQUARE_HALF = 1;
+const ROTATE_ZONE_SIZE = 6;
 
 const SCALE_HANDLE_LABELS: Record<ScaleHandle, string> = {
   tl: 'Scale handle, top-left corner',
@@ -27,11 +26,16 @@ interface ScaleHandleSpec {
   cursor: string;
 }
 
+interface RotateZoneSpec {
+  id: 'tl' | 'tr' | 'bl' | 'br';
+  x: number;
+  y: number;
+}
+
 interface SelectionBoxProps {
   bbox: { x: number; y: number; width: number; height: number };
   pivot: Point;
-  isSnapping: boolean;
-  onRotateHandleMouseDown: (e: React.MouseEvent) => void;
+  onRotateZoneMouseDown: (e: React.MouseEvent) => void;
   onPivotMouseDown: (e: React.MouseEvent) => void;
   onPivotDoubleClick: () => void;
   onBboxMouseDown: (e: React.MouseEvent) => void;
@@ -41,8 +45,7 @@ interface SelectionBoxProps {
 export default function SelectionBox({
   bbox,
   pivot,
-  isSnapping,
-  onRotateHandleMouseDown,
+  onRotateZoneMouseDown,
   onPivotMouseDown,
   onPivotDoubleClick,
   onBboxMouseDown,
@@ -57,13 +60,6 @@ export default function SelectionBox({
   const cx = (left + right) / 2;
   const cy = (top + bottom) / 2;
 
-  const handleX = cx;
-  const handleY = top - HANDLE_OFFSET;
-
-  const handleClass = isSnapping
-    ? `${styles.selectionHandle} ${styles.selectionHandleSnapping}`
-    : styles.selectionHandle;
-
   const scaleHandles: ScaleHandleSpec[] = [
     { id: 'tl', x: left, y: top, cursor: styles.cursorNwse },
     { id: 'tc', x: cx, y: top, cursor: styles.cursorNs },
@@ -73,6 +69,13 @@ export default function SelectionBox({
     { id: 'bl', x: left, y: bottom, cursor: styles.cursorNesw },
     { id: 'bc', x: cx, y: bottom, cursor: styles.cursorNs },
     { id: 'br', x: right, y: bottom, cursor: styles.cursorNwse },
+  ];
+
+  const rotateZones: RotateZoneSpec[] = [
+    { id: 'tl', x: left - ROTATE_ZONE_SIZE, y: top - ROTATE_ZONE_SIZE },
+    { id: 'tr', x: right, y: top - ROTATE_ZONE_SIZE },
+    { id: 'bl', x: left - ROTATE_ZONE_SIZE, y: bottom },
+    { id: 'br', x: right, y: bottom },
   ];
 
   return (
@@ -86,23 +89,18 @@ export default function SelectionBox({
         onMouseDown={onBboxMouseDown}
       />
       <rect className={styles.selectionBox} x={left} y={top} width={width} height={height} />
-      <line
-        className={styles.selectionConnector}
-        x1={handleX}
-        y1={top}
-        x2={handleX}
-        y2={handleY + HANDLE_RADIUS}
-      />
-      <circle
-        className={handleClass}
-        cx={handleX}
-        cy={handleY}
-        r={HANDLE_RADIUS}
-        onMouseDown={onRotateHandleMouseDown}
-        role="button"
-        aria-label="Rotation handle. Drag to rotate selection."
-        tabIndex={0}
-      />
+      {rotateZones.map((zone) => (
+        <rect
+          key={zone.id}
+          className={styles.rotateZone}
+          x={zone.x}
+          y={zone.y}
+          width={ROTATE_ZONE_SIZE}
+          height={ROTATE_ZONE_SIZE}
+          onMouseDown={onRotateZoneMouseDown}
+        />
+      ))}
+      {/* Painted after rotateZones so scale handle wins on corner overlap */}
       {scaleHandles.map((h) => (
         <rect
           key={h.id}

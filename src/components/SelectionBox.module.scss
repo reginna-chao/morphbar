@@ -13,28 +13,10 @@
   pointer-events: none;
 }
 
-.selectionConnector {
-  stroke: var(--selection-color);
-  stroke-width: 0.6;
-  vector-effect: non-scaling-stroke;
-  pointer-events: none;
-}
-
-.selectionHandle {
-  fill: var(--selection-color);
-  stroke: $white;
-  stroke-width: 0.6;
+.rotateZone {
+  fill: transparent;
+  pointer-events: all;
   cursor: $rotate-cursor 12 12, grab;
-  vector-effect: non-scaling-stroke;
-
-  &:active {
-    cursor: grabbing;
-  }
-}
-
-.selectionHandleSnapping {
-  fill: $color-yellow;
-  stroke-width: 1.2;
 }
 
 .selectionPivot {
