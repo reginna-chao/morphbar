@@ -76,6 +76,12 @@ interface EditorCanvasProps {
   lines: LineState[];
   onLinesChange: (lines: LineState[]) => void;
   onCommit: () => void;
+  // Commit a transform (rotate/translate/scale) result, snapping the given
+  // lines to grid first to prevent float drift. Drag-end paths omit `lines`
+  // (the live present already holds the result). Synchronous button paths pass
+  // the computed `lines` so the commit avoids a stale present read. Falls back
+  // to onCommit when not provided.
+  onCommitTransform?: (snapIndices: Set<number>, lines?: LineState[]) => void;
   onReset: () => void;
   mirrorTargetMap?: Map<LineIndex, LineIndex>;
   sourceIndices?: Set<number>;
@@ -86,6 +92,7 @@ export default function EditorCanvas({
   lines,
   onLinesChange,
   onCommit,
+  onCommitTransform,
   onReset,
   mirrorTargetMap = EMPTY_MAP,
   sourceIndices = EMPTY_SET,
@@ -158,6 +165,19 @@ export default function EditorCanvas({
     return pt.matrixTransform(ctm.inverse());
   }, []);
 
+  // Transform commits snap to grid (via onCommitTransform); other commit paths
+  // (pen edits) keep using plain onCommit.
+  const commitTransform = useCallback(
+    (snapIndices: Set<number>, snapLines?: LineState[]) => {
+      if (onCommitTransform) {
+        onCommitTransform(snapIndices, snapLines);
+        return;
+      }
+      onCommit();
+    },
+    [onCommitTransform, onCommit]
+  );
+
   const { state: rotateState, beginRotate } = useRotateInteraction({
     selected: selectedLines,
     sourceIndices,
@@ -165,7 +185,7 @@ export default function EditorCanvas({
     pivot: effectivePivot,
     lines,
     onLinesChange,
-    onCommit,
+    onCommit: commitTransform,
     getSVGPoint,
   });
 
@@ -226,7 +246,7 @@ export default function EditorCanvas({
     pivotPos,
     setPivotPos,
     onLinesChange,
-    onCommit,
+    onCommit: commitTransform,
     getSVGPoint,
     snapTranslate: snapTranslateBridge,
     setActiveGuides: setGroupGuidesBridge,
@@ -241,7 +261,7 @@ export default function EditorCanvas({
     pivotPos,
     setPivotPos,
     onLinesChange,
-    onCommit,
+    onCommit: commitTransform,
     getSVGPoint,
     snapScale: snapScaleBridge,
     setActiveGuides: setGroupGuidesBridge,
@@ -290,8 +310,13 @@ export default function EditorCanvas({
         deg,
         effectivePivot
       );
+      // Button rotation computes the result and commits in one synchronous
+      // batch. Route through the single transform choke point, passing the
+      // computed lines explicitly so snapping + mirror sync + commit all happen
+      // there. Passing lines avoids the stale present read that a drag-style
+      // commit (which reads the flushed live frames) would otherwise hit.
       onLinesChange(next);
-      onCommit();
+      commitTransform(selectedLines, next);
     },
     [
       lines,
@@ -300,7 +325,7 @@ export default function EditorCanvas({
       mode,
       effectivePivot,
       onLinesChange,
-      onCommit,
+      commitTransform,
       rotateState.isRotating,
       translateState.isTranslating,
       scaleState.isScaling,
@@ -374,6 +399,7 @@ export default function EditorCanvas({
       const isInputTarget =
         target instanceof HTMLInputElement ||
         target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
         (target?.isContentEditable ?? false);
       const key = e.key.toLowerCase();
       const noModifiers = !e.ctrlKey && !e.metaKey && !e.altKey;

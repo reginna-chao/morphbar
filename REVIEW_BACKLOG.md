@@ -42,32 +42,6 @@
 - **建議修法**：拖曳期間若偵測 `mirrorGroups` 變動，要嘛取消旋轉、要嘛刷新 `sourceRef`
 - **延後理由**：實際使用情境難重現，且修復成本與效益不成比例
 
-#### B4. 重複旋轉的浮點漂移累積
-
-- **來源**：SUGGESTION S15
-- **位置**：[src/utils/geometry.ts](src/utils/geometry.ts)（`rotatePoints` 已有 4 位小數 round）
-- **問題**：每次拖曳結束後，rotated coords 在下一輪再被旋轉，多輪累積 → 整數座標 (20.0) 變成 19.9998
-- **影響**：generated SVG path 出現長小數
-- **建議修法**：每次拖曳結束時把座標 snap 回 0.5 SVG-unit 整數網格（與現有 5px 拖曳網格一致）
-- **延後理由**：目前 4 位小數 round 已大幅減緩漂移；視實際使用體感再決定是否進一步處理
-
-#### B5. `rotatePoints` 對 0° 沒有 early return
-
-- **來源**：SUGGESTION S14
-- **位置**：[src/utils/geometry.ts:31-45](src/utils/geometry.ts#L31-L45)
-- **問題**：`rotateLineMode` 呼叫 `rotatePoints(_, 0)` 仍會跑完整旋轉計算
-- **影響**：微小 perf 浪費 + 0° 也會經過 round 而引入漂移
-- **建議修法**：`if (angleDeg === 0) return points.map(p => ({ ...p }));`
-- **延後理由**：呼叫站上層通常已 guard 0°，影響邊際
-
-#### B6. 鍵盤 input guard 沒涵蓋 `<select>` / contenteditable
-
-- **來源**：SUGGESTION S16
-- **位置**：[src/components/EditorCanvas.tsx](src/components/EditorCanvas.tsx) 鍵盤 handler
-- **問題**：guard 只檢查 `HTMLInputElement` / `HTMLTextAreaElement`；遇到 `<select>` 或 `contenteditable` 元素時可能誤觸快捷鍵
-- **影響**：目前專案沒有 `<select>` 與 contenteditable，無實際影響
-- **延後理由**：未來新增此類元素時再補
-
 ---
 
 ---
@@ -137,13 +111,6 @@
 - **問題**：刪除偵測迴圈用 JSON.stringify 逐行比較找出被刪的索引。LineManager 的 handleDeleteLine 已知 index，可以直接傳遞。
 - **建議修法**：新增 `removeLine(index: number)` handler，避免推測
 - **延後理由**：sub-millisecond 成本，目前正確
-
-#### B14. Reset 在無變化時也會 toast
-
-- **來源**：Sprint 5.4 SUGGESTION
-- **位置**：[src/App.tsx](src/App.tsx) `handleReset`
-- **問題**：commitWith 會 short-circuit，但 toast 還是會顯示
-- **建議修法**：reset 回傳是否真的有變更，或在呼叫前先比對
 
 #### B15. live/commit handler API 配對不對稱
 
@@ -324,4 +291,4 @@
 
 ---
 
-**最後更新**：2026-05-06
+**最後更新**：2026-06-23（清除 B4 / B5 / B6 / B14 — Batch B 技術債）

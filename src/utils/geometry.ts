@@ -29,6 +29,10 @@ export function computeCentroid(points: PathPoint[]): Point {
 }
 
 export function rotatePoints(points: PathPoint[], angleDeg: number, pivot: Point): PathPoint[] {
+  if (angleDeg === 0) {
+    return points.map((p) => ({ ...p }));
+  }
+
   const rad = (angleDeg * Math.PI) / 180;
   const cos = Math.cos(rad);
   const sin = Math.sin(rad);
@@ -40,6 +44,34 @@ export function rotatePoints(points: PathPoint[], angleDeg: number, pivot: Point
       x: round4(pivot.x + dx * cos - dy * sin),
       y: round4(pivot.y + dx * sin + dy * cos),
       type: p.type,
+    };
+  });
+}
+
+// Rounds every point's x/y to the nearest `step` SVG units, preserving `type`.
+// Applied at transform COMMIT time only (drag end / rotate-button actions) to
+// stop integer coords drifting (e.g. 20.0 -> 19.9998) across repeated rotate /
+// scale operations, which would otherwise bloat exported SVG paths with long
+// decimals. Never call this on live per-frame drag updates — snapping mid-drag
+// feels jittery — and never on pen-point edits, which manage their own grid.
+export function snapPointsToGrid(points: PathPoint[], step = 0.5): PathPoint[] {
+  return points.map((p) => ({
+    ...p,
+    x: Math.round(p.x / step) * step,
+    y: Math.round(p.y / step) * step,
+  }));
+}
+
+// Applies snapPointsToGrid to both modes of the given selected lines. Non-
+// selected lines are returned untouched (same reference).
+export function snapLinesToGrid(lines: LineState[], indices: Set<number>, step = 0.5): LineState[] {
+  if (indices.size === 0) return lines;
+  return lines.map((line, i) => {
+    if (!indices.has(i)) return line;
+    return {
+      ...line,
+      menu: snapPointsToGrid(line.menu, step),
+      close: snapPointsToGrid(line.close, step),
     };
   });
 }

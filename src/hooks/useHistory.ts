@@ -11,6 +11,7 @@ export interface UseHistoryReturn<T> {
   setLive: (next: T | ((prev: T) => T)) => void;
   commit: () => void;
   commitWith: (next: T | ((prev: T) => T)) => void;
+  commitValue: (next: T) => void;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
@@ -31,7 +32,7 @@ type HistoryAction<T> =
   | { type: 'undo' }
   | { type: 'redo' };
 
-function isEqual<T>(a: T, b: T): boolean {
+export function isEqual<T>(a: T, b: T): boolean {
   if (Object.is(a, b)) return true;
   return JSON.stringify(a) === JSON.stringify(b);
 }
@@ -112,6 +113,16 @@ export function useHistory<T>(initial: T, limit: number = 50): UseHistoryReturn<
     lastCommittedRef.current = next;
   }, []);
 
+  // Commit an explicit, fully-computed value. Unlike commitWith, this never
+  // reads stateRef.current.present, so it is safe to call synchronously right
+  // after a setLive whose dispatch has not flushed yet (e.g. a button handler
+  // that pushes the live frame and commits in one batch). lastCommittedRef is
+  // updated from the committed value, keeping the next diff base correct.
+  const commitValue = useCallback((next: T) => {
+    dispatch({ type: 'commit', nextOrSame: next, lastCommitted: lastCommittedRef.current });
+    lastCommittedRef.current = next;
+  }, []);
+
   const undo = useCallback(() => {
     const past = stateRef.current.past;
     if (past.length === 0) return;
@@ -134,11 +145,22 @@ export function useHistory<T>(initial: T, limit: number = 50): UseHistoryReturn<
       setLive,
       commit,
       commitWith,
+      commitValue,
       undo,
       redo,
       canUndo: state.past.length > 0,
       canRedo: state.future.length > 0,
     }),
-    [state.present, state.past.length, state.future.length, setLive, commit, commitWith, undo, redo]
+    [
+      state.present,
+      state.past.length,
+      state.future.length,
+      setLive,
+      commit,
+      commitWith,
+      commitValue,
+      undo,
+      redo,
+    ]
   );
 }

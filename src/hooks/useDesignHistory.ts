@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
-import { useHistory, type UseHistoryReturn } from './useHistory';
+import { useHistory, isEqual, type UseHistoryReturn } from './useHistory';
 import { adjustMirrorGroups, applyMirrorSync } from '@/utils/mirror';
+import { snapLinesToGrid } from '@/utils/geometry';
 import type { Lines, MirrorGroup, StyleConfig, TemplateResult } from '@/types';
 
 export interface DesignSnapshot {
@@ -18,7 +19,18 @@ export interface DesignHistoryHandlers {
   setStyleConfig: (next: StyleConfig) => void;
   setHorizontalShift: (next: number) => void;
   commit: () => void;
-  reset: (initialLines: Lines) => void;
+  // Commit the result of a transform (rotate/translate/scale). Snaps the
+  // transformed lines to the 0.5-unit grid before committing so integer coords
+  // don't drift across repeated transforms. Pass the indices of the lines that
+  // were transformed. Drag-end paths omit `lines` (the live `present` already
+  // holds the un-snapped result). Button paths that compute the result and
+  // commit in one synchronous batch pass `lines` explicitly to avoid a stale
+  // present read.
+  commitTransform: (indices: Set<number>, lines?: Lines) => void;
+  // Returns true when the reset actually changed state, false when it was a
+  // no-op (already at the initial design). Callers can use this to suppress a
+  // "reset successful" toast that would otherwise lie.
+  reset: (initialLines: Lines) => boolean;
   loadTemplate: (result: TemplateResult) => void;
 }
 
@@ -118,13 +130,45 @@ export function useDesignHistory(initial: DesignSnapshot): UseDesignHistoryRetur
     history.commit();
   }, [history]);
 
+  // Single choke point for all transform commits (drag-end + rotate buttons).
+  // Snapping (0.5 grid) + mirror sync + commit happen here and only here.
+  //
+  // Drag-end paths omit `lines`: the live `present` already holds the un-snapped
+  // transformed lines (pushed per-frame via setLines), so we read present, snap,
+  // mirror-sync, and commit via commitWith.
+  //
+  // Button paths pass the freshly computed `lines`: they push the live frame and
+  // commit in the same synchronous batch, so the reducer's `present` (and the
+  // stateRef that commitWith reads) is still stale. We snap/sync the passed
+  // value and commit it via commitValue, which sets lastCommittedRef from that
+  // value — keeping the next diff base correct without reading the stale present.
+  const commitTransform = useCallback(
+    (indices: Set<number>, lines?: Lines) => {
+      if (lines === undefined) {
+        history.commitWith((snap) => {
+          const snapped = snapLinesToGrid(snap.lines, indices);
+          return { ...snap, lines: applyMirrorSync(snapped, snap.mirrorGroups) };
+        });
+        return;
+      }
+      const snap = history.state;
+      const snapped = snapLinesToGrid(lines, indices);
+      history.commitValue({ ...snap, lines: applyMirrorSync(snapped, snap.mirrorGroups) });
+    },
+    [history]
+  );
+
   const reset = useCallback(
-    (initialLines: Lines) => {
-      history.commitWith((snap) => ({
-        ...snap,
+    (initialLines: Lines): boolean => {
+      const current = history.state;
+      const next: DesignSnapshot = {
+        ...current,
         lines: structuredClone(initialLines),
         mirrorGroups: [],
-      }));
+      };
+      if (isEqual(next, current)) return false;
+      history.commitWith(next);
+      return true;
     },
     [history]
   );
@@ -152,6 +196,7 @@ export function useDesignHistory(initial: DesignSnapshot): UseDesignHistoryRetur
       setStyleConfig,
       setHorizontalShift,
       commit,
+      commitTransform,
       reset,
       loadTemplate,
     }),
@@ -163,6 +208,7 @@ export function useDesignHistory(initial: DesignSnapshot): UseDesignHistoryRetur
       setStyleConfig,
       setHorizontalShift,
       commit,
+      commitTransform,
       reset,
       loadTemplate,
     ]
