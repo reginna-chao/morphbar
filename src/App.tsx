@@ -140,8 +140,10 @@ function App() {
   );
 
   const handleReset = useCallback(() => {
-    handlers.reset(INITIAL_LINES);
-    toast.success('Reset successful', toastOptions.success);
+    const changed = handlers.reset(INITIAL_LINES);
+    if (changed) {
+      toast.success('Reset successful', toastOptions.success);
+    }
   }, [handlers]);
 
   const handleLoadTemplate = useCallback(
@@ -226,7 +228,10 @@ function App() {
         x: 50,
         y: 50,
       });
-      handlers.commitLines(next);
+      // Route through the single transform choke point with explicit lines so
+      // snapping + mirror sync + commit all happen there. Passing lines avoids
+      // the stale present read inherent to a synchronous compute-then-commit.
+      handlers.commitTransform(allIndices, next);
     },
     [lines, sourceIndices, mode, handlers, rotateCurrentModeOnly]
   );
@@ -286,6 +291,7 @@ function App() {
             lines={lines}
             onLinesChange={handlers.setLines}
             onCommit={handlers.commit}
+            onCommitTransform={handlers.commitTransform}
             onReset={handleReset}
             mirrorTargetMap={mirrorTargetMap}
             sourceIndices={sourceIndices}

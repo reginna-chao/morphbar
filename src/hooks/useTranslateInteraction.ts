@@ -16,7 +16,7 @@ interface UseTranslateInteractionArgs {
   pivotPos: Point | null;
   setPivotPos: (p: Point | null) => void;
   onLinesChange: (lines: LineState[]) => void;
-  onCommit?: () => void;
+  onCommit?: (snapIndices: Set<number>) => void;
   getSVGPoint: (e: MouseEvent) => DOMPoint;
   snapTranslate: (
     originBbox: BoundingBox,
@@ -149,7 +149,7 @@ export function useTranslateInteraction(
       originLinesRef.current = null;
       argsRef.current.clearGuides();
       setState({ isTranslating: false });
-      argsRef.current.onCommit?.();
+      argsRef.current.onCommit?.(selectedRef.current);
     };
 
     activeListenersRef.current = { onMove, onUp };

@@ -53,7 +53,7 @@ interface UseScaleInteractionArgs {
   pivotPos: Point | null;
   setPivotPos: (p: Point | null) => void;
   onLinesChange: (lines: LineState[]) => void;
-  onCommit?: () => void;
+  onCommit?: (snapIndices: Set<number>) => void;
   getSVGPoint: (e: MouseEvent) => DOMPoint;
   snapScale: (
     originBbox: BoundingBox,
@@ -291,7 +291,7 @@ export function useScaleInteraction(args: UseScaleInteractionArgs): UseScaleInte
       handleRef.current = null;
       argsRef.current.clearGuides();
       setState({ isScaling: false, activeHandle: null });
-      argsRef.current.onCommit?.();
+      argsRef.current.onCommit?.(selectedRef.current);
     };
 
     activeListenersRef.current = { onMove, onUp };
